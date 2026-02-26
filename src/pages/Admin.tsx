@@ -16,7 +16,8 @@ import {
   DollarSign,
   Calendar,
   Image as ImageIcon,
-  Save
+  Save,
+  Phone
 } from 'lucide-react';
 import { Product, Order, OrderStatus } from '../types';
 import { LocalDB } from '../services/localDB';
@@ -60,6 +61,17 @@ export default function Admin() {
   const handleUpdateOrderStatus = (orderId: string, status: OrderStatus) => {
     LocalDB.updateOrderStatus(orderId, status);
     setOrders(LocalDB.getOrders());
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, image: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSaveProduct = (e: React.FormEvent) => {
@@ -323,8 +335,21 @@ export default function Admin() {
                         <p className="text-xs text-stone-400">{new Date(order.createdAt).toLocaleDateString()}</p>
                       </td>
                       <td className="px-8 py-6">
-                        <p className="font-bold text-stone-900">{order.userName}</p>
-                        <p className="text-xs text-stone-400">{order.phone}</p>
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <p className="font-bold text-stone-900">{order.userName}</p>
+                            <p className="text-xs text-stone-400">{order.phone}</p>
+                          </div>
+                          <a 
+                            href={`https://wa.me/${order.phone.replace(/\D/g, '')}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-2 bg-emerald-50 text-emerald-500 rounded-lg hover:bg-emerald-500 hover:text-white transition-all"
+                            title="Conversar no WhatsApp"
+                          >
+                            <Phone size={14} />
+                          </a>
+                        </div>
                       </td>
                       <td className="px-8 py-6">
                         <p className="text-sm text-stone-600">{order.items.length} itens</p>
@@ -476,7 +501,7 @@ export default function Admin() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-white rounded-[40px] shadow-2xl z-[90] overflow-hidden"
+              className="fixed left-0 right-0 bottom-0 md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 w-full md:max-w-lg bg-white rounded-t-[40px] md:rounded-[40px] shadow-2xl z-[90] overflow-hidden"
             >
               <form onSubmit={handleSaveProduct} className="p-6 md:p-10 space-y-6 max-h-[90vh] overflow-y-auto">
                 <header className="flex justify-between items-center mb-4">
@@ -488,8 +513,8 @@ export default function Admin() {
                   </button>
                 </header>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                  <div className="col-span-2 space-y-1">
+                <div className="flex flex-col gap-6">
+                  <div className="space-y-1">
                     <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Nome do Produto</label>
                     <input 
                       type="text" 
@@ -500,7 +525,7 @@ export default function Admin() {
                     />
                   </div>
 
-                  <div className="col-span-2 space-y-1">
+                  <div className="space-y-1">
                     <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Descrição</label>
                     <textarea 
                       required
@@ -510,66 +535,81 @@ export default function Admin() {
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Preço (R$)</label>
-                    <input 
-                      type="number" 
-                      step="0.01"
-                      required
-                      value={formData.price}
-                      onChange={e => setFormData({...formData, price: e.target.value})}
-                      className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Preço Promocional (R$)</label>
-                    <input 
-                      type="number" 
-                      step="0.01"
-                      value={formData.promoPrice}
-                      onChange={e => setFormData({...formData, promoPrice: e.target.value})}
-                      className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Categoria</label>
-                    <select 
-                      value={formData.category}
-                      onChange={e => setFormData({...formData, category: e.target.value})}
-                      className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none"
-                    >
-                      <option>Brigadeiros</option>
-                      <option>Bolos</option>
-                      <option>Tortas</option>
-                      <option>Cookies</option>
-                      <option>Gelados</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Tempo de Entrega</label>
-                    <input 
-                      type="text" 
-                      required
-                      value={formData.deliveryTime}
-                      onChange={e => setFormData({...formData, deliveryTime: e.target.value})}
-                      className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none"
-                    />
-                  </div>
-
-                  <div className="col-span-2 space-y-1">
-                    <label className="text-xs font-black text-stone-500 uppercase tracking-wider">URL da Imagem</label>
-                    <div className="relative">
-                      <ImageIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                    <div className="space-y-1">
+                      <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Preço (R$)</label>
                       <input 
-                        type="url" 
-                        value={formData.image}
-                        onChange={e => setFormData({...formData, image: e.target.value})}
-                        placeholder="https://exemplo.com/imagem.jpg"
-                        className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-brand-primary/20 outline-none"
+                        type="number" 
+                        step="0.01"
+                        required
+                        value={formData.price}
+                        onChange={e => setFormData({...formData, price: e.target.value})}
+                        className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none"
                       />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Preço Promocional (R$)</label>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        value={formData.promoPrice}
+                        onChange={e => setFormData({...formData, promoPrice: e.target.value})}
+                        className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                    <div className="space-y-1">
+                      <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Categoria</label>
+                      <select 
+                        value={formData.category}
+                        onChange={e => setFormData({...formData, category: e.target.value})}
+                        className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none"
+                      >
+                        <option>Brigadeiros</option>
+                        <option>Bolos</option>
+                        <option>Tortas</option>
+                        <option>Cookies</option>
+                        <option>Gelados</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Tempo de Entrega</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={formData.deliveryTime}
+                        onChange={e => setFormData({...formData, deliveryTime: e.target.value})}
+                        className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Imagem do Produto</label>
+                    <div className="flex flex-col md:flex-row gap-4 items-center">
+                      {formData.image && (
+                        <div className="w-24 h-24 rounded-2xl overflow-hidden border border-stone-100 flex-shrink-0">
+                          <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="relative flex-1 w-full">
+                        <label className="flex items-center justify-center gap-2 w-full bg-stone-50 border border-dashed border-stone-200 rounded-2xl py-6 px-4 cursor-pointer hover:bg-stone-100 transition-all">
+                          <ImageIcon className="text-stone-400" size={20} />
+                          <span className="text-sm font-bold text-stone-600">
+                            {formData.image ? 'Alterar Imagem' : 'Anexar Imagem'}
+                          </span>
+                          <input 
+                            type="file" 
+                            accept="image/*"
+                            onChange={handleFileChange}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
                     </div>
                   </div>
                 </div>
