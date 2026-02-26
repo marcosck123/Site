@@ -11,9 +11,22 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
-const db = getFirestore(app);
+// Check if Firebase config is valid
+const isFirebaseConfigValid = !!firebaseConfig.apiKey && firebaseConfig.apiKey !== 'undefined';
 
-export { auth, db };
+if (!isFirebaseConfigValid) {
+  console.warn(
+    'Firebase API Key is missing. Please set VITE_FIREBASE_API_KEY in your environment variables. ' +
+    'Authentication features will be disabled until configured.'
+  );
+}
+
+// Initialize Firebase only if config is valid, otherwise provide a mock-like behavior or handle nulls
+const app = isFirebaseConfigValid 
+  ? (getApps().length === 0 ? initializeApp(firebaseConfig) : getApp())
+  : null;
+
+const auth = app ? getAuth(app) : null;
+const db = app ? getFirestore(app) : null;
+
+export { auth, db, isFirebaseConfigValid };

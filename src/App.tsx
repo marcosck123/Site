@@ -41,23 +41,30 @@ export default function App() {
 
   useEffect(() => {
     // Firebase Auth Listener
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser) {
-        setUser({
-          id: firebaseUser.uid,
-          name: firebaseUser.displayName || 'Usuário',
-          email: firebaseUser.email || '',
-          avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.email}`
-        });
-      } else {
-        setUser(null);
-      }
-    });
+    let unsubscribe = () => {};
+    
+    if (auth) {
+      unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        if (firebaseUser) {
+          setUser({
+            id: firebaseUser.uid,
+            name: firebaseUser.displayName || 'Usuário',
+            email: firebaseUser.email || '',
+            avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.email}`
+          });
+        } else {
+          setUser(null);
+        }
+      });
+    }
 
     // Show prompt after 3 seconds if permission is still default
     if (notificationPermission === 'default') {
       const timer = setTimeout(() => setShowNotificationPrompt(true), 3000);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        unsubscribe();
+      };
     }
 
     return () => unsubscribe();
@@ -68,6 +75,7 @@ export default function App() {
   };
 
   const handleLogout = async () => {
+    if (!auth) return;
     try {
       await signOut(auth);
       setUser(null);

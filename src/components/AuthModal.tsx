@@ -10,7 +10,7 @@ import {
   GoogleAuthProvider,
   GithubAuthProvider
 } from 'firebase/auth';
-import { auth } from '../services/firebase';
+import { auth, isFirebaseConfigValid } from '../services/firebase';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -24,10 +24,16 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    !isFirebaseConfigValid ? 'Configuração do Firebase ausente. Verifique as variáveis de ambiente.' : null
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isFirebaseConfigValid || !auth) {
+      setError('O sistema de autenticação não está configurado corretamente.');
+      return;
+    }
     setIsLoading(true);
     setError(null);
     
@@ -62,6 +68,10 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
   };
 
   const handleSocialLogin = async (providerName: 'google' | 'github') => {
+    if (!isFirebaseConfigValid || !auth) {
+      setError('O sistema de autenticação não está configurado corretamente.');
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
