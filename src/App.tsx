@@ -13,12 +13,15 @@ import {
   ArrowLeft,
   Bell,
   BellOff,
-  Sparkles
+  Sparkles,
+  User as UserIcon,
+  LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { PRODUCTS, CATEGORIES } from './constants';
-import { Product, CartItem, Category } from './types';
+import { Product, CartItem, Category, User } from './types';
 import { NotificationService } from './services/notificationService';
+import AuthModal from './components/AuthModal';
 
 export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<Category>('Todos');
@@ -28,14 +31,36 @@ export default function App() {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(NotificationService.getPermissionStatus());
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
+  
+  // Auth State
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   useEffect(() => {
+    // Check for saved user in localStorage
+    const savedUser = localStorage.getItem('doce_entrega_user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+
     // Show prompt after 3 seconds if permission is still default
     if (notificationPermission === 'default') {
       const timer = setTimeout(() => setShowNotificationPrompt(true), 3000);
       return () => clearTimeout(timer);
     }
   }, [notificationPermission]);
+
+  const handleLogin = (newUser: User) => {
+    setUser(newUser);
+    localStorage.setItem('doce_entrega_user', JSON.stringify(newUser));
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('doce_entrega_user');
+    setIsUserMenuOpen(false);
+  };
 
   const handleRequestPermission = async () => {
     const permission = await NotificationService.requestPermission();
@@ -140,6 +165,62 @@ export default function App() {
             >
               {notificationPermission === 'granted' ? <Bell size={22} /> : <BellOff size={22} />}
             </button>
+
+            <div className="relative">
+              {user ? (
+                <div className="relative">
+                  <button 
+                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    className="flex items-center gap-2 p-1 pr-3 hover:bg-stone-100 rounded-full transition-colors"
+                  >
+                    <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full border-2 border-brand-primary/20" />
+                    <span className="text-sm font-bold text-stone-900 hidden sm:block">{user.name.split(' ')[0]}</span>
+                  </button>
+                  
+                  <AnimatePresence>
+                    {isUserMenuOpen && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setIsUserMenuOpen(false)} />
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-stone-100 py-2 z-20"
+                        >
+                          <div className="px-4 py-2 border-b border-stone-50 mb-1">
+                            <p className="text-xs font-bold text-stone-400 uppercase tracking-wider">Minha Conta</p>
+                          </div>
+                          <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
+                            <UserIcon size={16} />
+                            Perfil
+                          </button>
+                          <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors">
+                            <ShoppingBag size={16} />
+                            Meus Pedidos
+                          </button>
+                          <button 
+                            onClick={handleLogout}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
+                          >
+                            <LogOut size={16} />
+                            Sair
+                          </button>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white rounded-full text-sm font-bold hover:bg-brand-primary transition-all shadow-lg shadow-stone-200"
+                >
+                  <UserIcon size={18} />
+                  <span className="hidden sm:inline">Entrar</span>
+                </button>
+              )}
+            </div>
+
             <div className="hidden md:flex items-center gap-2 text-sm text-stone-500">
               <MapPin size={16} className="text-brand-primary" />
               <span>Entregar em: <span className="font-semibold text-stone-900">Rua das Flores, 123</span></span>
@@ -471,11 +552,24 @@ export default function App() {
           )}
           <span className="text-[10px] font-bold">Carrinho</span>
         </button>
-        <button className="flex flex-col items-center gap-1 text-stone-400">
-          <Star size={20} />
-          <span className="text-[10px] font-bold">Perfil</span>
+        <button 
+          onClick={() => user ? setIsUserMenuOpen(true) : setIsAuthModalOpen(true)}
+          className={`flex flex-col items-center gap-1 ${user ? 'text-brand-primary' : 'text-stone-400'}`}
+        >
+          {user ? (
+            <img src={user.avatar} className="w-5 h-5 rounded-full border border-brand-primary" />
+          ) : (
+            <UserIcon size={20} />
+          )}
+          <span className="text-[10px] font-bold">{user ? 'Perfil' : 'Entrar'}</span>
         </button>
       </div>
+
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+        onLogin={handleLogin} 
+      />
     </div>
   );
 }
