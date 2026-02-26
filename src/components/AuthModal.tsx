@@ -1,16 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Mail, Lock, User, ArrowRight, Github, Chrome } from 'lucide-react';
+import { X, Mail, Lock, User, ArrowRight, Phone, MapPin } from 'lucide-react';
 import { User as UserType } from '../types';
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  updateProfile,
-  signInWithPopup,
-  GoogleAuthProvider,
-  GithubAuthProvider
-} from 'firebase/auth';
-import { auth, isFirebaseConfigValid } from '../services/firebase';
+import { LocalDB } from '../services/localDB';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -23,71 +15,66 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(
-    !isFirebaseConfigValid ? 'Configuração do Firebase ausente. Certifique-se de que as variáveis de ambiente (Secrets) foram adicionadas e o servidor foi reiniciado.' : null
-  );
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFirebaseConfigValid || !auth) {
-      setError('O sistema de autenticação não está configurado corretamente.');
-      return;
-    }
     setIsLoading(true);
     setError(null);
     
     try {
       if (isLogin) {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-        onLogin({
-          id: user.uid,
-          name: user.displayName || 'Usuário',
-          email: user.email || '',
-          avatar: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`
-        });
-      } else {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-        await updateProfile(user, { displayName: name });
-        onLogin({
-          id: user.uid,
-          name: name,
-          email: user.email || '',
-          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`
-        });
-      }
-      onClose();
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Ocorreu um erro na autenticação.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        // Admin Check
+        if (email === 'marcoseduardock@gmail.com' && password === 'E-567654m') {
+          const adminUser: UserType = {
+            id: 'admin',
+            name: 'Administrador',
+            email: email,
+            isAdmin: true,
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=admin`
+          };
+          onLogin(adminUser);
+          onClose();
+          return;
+        }
 
-  const handleSocialLogin = async (providerName: 'google' | 'github') => {
-    if (!isFirebaseConfigValid || !auth) {
-      setError('O sistema de autenticação não está configurado corretamente.');
-      return;
-    }
-    setIsLoading(true);
-    setError(null);
-    try {
-      const provider = providerName === 'google' ? new GoogleAuthProvider() : new GithubAuthProvider();
-      const userCredential = await signInWithPopup(auth, provider);
-      const user = userCredential.user;
-      onLogin({
-        id: user.uid,
-        name: user.displayName || 'Usuário',
-        email: user.email || '',
-        avatar: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`
-      });
-      onClose();
+        // Regular User Check
+        const users = LocalDB.getUsers();
+        const user = users.find(u => u.email === email);
+        // In a real app, we'd check password hash. For now, we simulate.
+        if (user) {
+          onLogin(user);
+          onClose();
+        } else {
+          setError('E-mail ou senha incorretos.');
+        }
+      } else {
+        // Registration
+        const users = LocalDB.getUsers();
+        if (users.some(u => u.email === email)) {
+          setError('Este e-mail já está cadastrado.');
+          return;
+        }
+
+        const newUser: UserType = {
+          id: Date.now().toString(),
+          name,
+          email,
+          phone,
+          address,
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`
+        };
+
+        LocalDB.registerUser(newUser);
+        onLogin(newUser);
+        onClose();
+      }
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Ocorreu um erro no login social.');
+      setError('Ocorreu um erro na autenticação.');
     } finally {
       setIsLoading(false);
     }
@@ -193,6 +180,40 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
                   </div>
                 </div>
 
+                {!isLogin && (
+                  <>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-stone-700 ml-1">NÚMERO (WHATSAPP)</label>
+                      <div className="relative">
+                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
+                        <input
+                          type="tel"
+                          required
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          placeholder="(00) 00000-0000"
+                          className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-stone-700 ml-1">ENDEREÇO DE ENTREGA</label>
+                      <div className="relative">
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
+                        <input
+                          type="text"
+                          required
+                          value={address}
+                          onChange={(e) => setAddress(e.target.value)}
+                          placeholder="Rua, Número, Bairro, Cidade"
+                          className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all outline-none"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
                 <button
                   type="submit"
                   disabled={isLoading}
@@ -208,34 +229,6 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
                   )}
                 </button>
               </form>
-
-              <div className="relative my-8">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-stone-100"></div>
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-4 text-stone-400 font-medium">Ou continue com</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <button 
-                  onClick={() => handleSocialLogin('google')}
-                  disabled={isLoading}
-                  className="flex items-center justify-center gap-2 py-3 border border-stone-100 rounded-2xl hover:bg-stone-50 transition-colors font-medium text-sm disabled:opacity-50"
-                >
-                  <Chrome size={18} className="text-red-500" />
-                  Google
-                </button>
-                <button 
-                  onClick={() => handleSocialLogin('github')}
-                  disabled={isLoading}
-                  className="flex items-center justify-center gap-2 py-3 border border-stone-100 rounded-2xl hover:bg-stone-50 transition-colors font-medium text-sm disabled:opacity-50"
-                >
-                  <Github size={18} />
-                  GitHub
-                </button>
-              </div>
 
               <p className="text-center mt-8 text-sm text-stone-500">
                 {isLogin ? 'Não tem uma conta?' : 'Já tem uma conta?'}

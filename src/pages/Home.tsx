@@ -2,10 +2,15 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { ArrowRight, Star, Clock, ShoppingBag, Heart, Sparkles, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { PRODUCTS } from '../constants';
+import { LocalDB } from '../services/localDB';
+import { Product } from '../types';
 
 export default function Home() {
-  const featuredProducts = PRODUCTS.slice(0, 4);
+  const [featuredProducts, setFeaturedProducts] = React.useState<Product[]>([]);
+
+  React.useEffect(() => {
+    setFeaturedProducts(LocalDB.getProducts().slice(0, 4));
+  }, []);
 
   return (
     <div className="space-y-16 pb-20">

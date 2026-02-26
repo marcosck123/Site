@@ -8,13 +8,15 @@ import {
   LogOut,
   Home as HomeIcon,
   Package,
-  User as UserIcon
+  User as UserIcon,
+  LayoutDashboard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Product, CartItem, User } from './types';
 import AuthModal from './components/AuthModal';
 import { LocalDB } from './services/localDB';
+import Admin from './pages/Admin';
 
 // Pages
 import Home from './pages/Home';
@@ -47,6 +49,10 @@ function AppContent() {
   };
 
   const addToCart = (product: Product) => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
@@ -77,6 +83,24 @@ function AppContent() {
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleCheckout = () => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    
+    const newOrder = {
+      id: Date.now().toString(),
+      userId: user.id,
+      userName: user.name,
+      items: cart,
+      total: cartTotal,
+      status: 'Pendente' as const,
+      createdAt: new Date().toISOString(),
+      address: user.address || 'Endereço não informado',
+      phone: user.phone || 'Telefone não informado'
+    };
+
+    LocalDB.addOrder(newOrder);
     setOrderPlaced(true);
     setCart([]);
     setTimeout(() => {
@@ -133,6 +157,15 @@ function AppContent() {
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       className="absolute right-0 mt-3 w-48 bg-white rounded-2xl shadow-2xl border border-stone-100 py-2 z-50"
                     >
+                      {user.isAdmin && (
+                        <Link 
+                          to="/admin"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="w-full px-4 py-3 text-left text-sm font-bold text-brand-primary hover:bg-stone-50 flex items-center gap-2"
+                        >
+                          <LayoutDashboard size={18} /> Painel Admin
+                        </Link>
+                      )}
                       <button className="w-full px-4 py-3 text-left text-sm font-bold text-stone-700 hover:bg-stone-50 flex items-center gap-2">
                         <UserIcon size={18} /> Perfil
                       </button>
@@ -167,6 +200,7 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/produtos" element={<Products onAddToCart={addToCart} />} />
+          <Route path="/admin" element={user?.isAdmin ? <Admin /> : <Home />} />
         </Routes>
       </main>
 

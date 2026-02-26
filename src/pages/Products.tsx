@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, ShoppingBag, Star, Clock, Heart, Filter, X } from 'lucide-react';
-import { PRODUCTS, CATEGORIES } from '../constants';
+import { Search, ShoppingBag, Star, Clock, Heart, X } from 'lucide-react';
+import { CATEGORIES } from '../constants';
 import { Product, Category } from '../types';
+import { LocalDB } from '../services/localDB';
 
 interface ProductsPageProps {
   onAddToCart: (product: Product) => void;
@@ -11,15 +12,20 @@ interface ProductsPageProps {
 export default function Products({ onAddToCart }: ProductsPageProps) {
   const [selectedCategory, setSelectedCategory] = useState<Category>('Todos');
   const [searchQuery, setSearchQuery] = useState('');
+  const [products, setProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    setProducts(LocalDB.getProducts());
+  }, []);
 
   const filteredProducts = useMemo(() => {
-    return PRODUCTS.filter(product => {
+    return products.filter(product => {
       const matchesCategory = selectedCategory === 'Todos' || product.category === selectedCategory;
       const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           product.description.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesCategory && matchesSearch;
     });
-  }, [selectedCategory, searchQuery]);
+  }, [selectedCategory, searchQuery, products]);
 
   return (
     <div className="container mx-auto px-6 py-12">
@@ -96,7 +102,16 @@ export default function Products({ onAddToCart }: ProductsPageProps) {
               <div className="p-6">
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-bold text-stone-900 group-hover:text-brand-primary transition-colors">{product.name}</h3>
-                  <span className="text-brand-primary font-black">R$ {product.price.toFixed(2)}</span>
+                  <div className="text-right">
+                    {product.promoPrice ? (
+                      <div className="flex flex-col items-end">
+                        <span className="text-brand-primary font-black">R$ {product.promoPrice.toFixed(2)}</span>
+                        <span className="text-[10px] text-stone-400 line-through">R$ {product.price.toFixed(2)}</span>
+                      </div>
+                    ) : (
+                      <span className="text-brand-primary font-black">R$ {product.price.toFixed(2)}</span>
+                    )}
+                  </div>
                 </div>
                 <p className="text-stone-500 text-xs mb-6 line-clamp-2 leading-relaxed">{product.description}</p>
                 
