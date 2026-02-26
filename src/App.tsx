@@ -91,7 +91,7 @@ function AppContent() {
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-stone-100">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 bg-brand-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-pink-100 group-hover:scale-110 transition-transform">
+            <div className="w-10 h-10 bg-brand-primary rounded-xl flex items-center justify-center text-brand-secondary shadow-lg shadow-brand-primary/20 group-hover:scale-110 transition-transform">
               <ShoppingBag size={24} />
             </div>
             <span className="text-xl font-black tracking-tighter text-stone-900">DOCE<span className="text-brand-primary">ENTREGA</span></span>
@@ -105,7 +105,7 @@ function AppContent() {
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setIsCartOpen(true)}
-              className="relative p-3 bg-brand-secondary text-brand-primary rounded-2xl hover:bg-brand-primary hover:text-white transition-all group"
+              className="relative p-3 bg-brand-secondary text-brand-primary rounded-2xl hover:bg-brand-primary hover:text-brand-secondary transition-all group"
             >
               <ShoppingBag size={24} />
               {cartCount > 0 && (
@@ -153,7 +153,7 @@ function AppContent() {
             ) : (
               <button 
                 onClick={() => setIsAuthModalOpen(true)}
-                className="bg-brand-primary text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-lg shadow-pink-100 hover:bg-brand-accent transition-all"
+                className="bg-brand-primary text-brand-secondary px-6 py-3 rounded-2xl font-bold text-sm shadow-lg shadow-brand-primary/20 hover:bg-brand-accent transition-all"
               >
                 Entrar
               </button>
@@ -176,7 +176,7 @@ function AppContent() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
             <div className="col-span-1 md:col-span-2">
               <Link to="/" className="flex items-center gap-2 mb-6">
-                <div className="w-10 h-10 bg-brand-primary rounded-xl flex items-center justify-center text-white">
+                <div className="w-10 h-10 bg-brand-primary rounded-xl flex items-center justify-center text-brand-secondary">
                   <ShoppingBag size={24} />
                 </div>
                 <span className="text-xl font-black tracking-tighter">DOCE<span className="text-brand-primary">ENTREGA</span></span>
@@ -353,7 +353,7 @@ function AppContent() {
                   <button 
                     onClick={handleCheckout}
                     disabled={orderPlaced}
-                    className="w-full bg-brand-primary text-white py-4 rounded-2xl font-bold shadow-lg shadow-pink-100 hover:bg-brand-accent transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full bg-brand-primary text-brand-secondary py-4 rounded-2xl font-bold shadow-lg shadow-brand-primary/20 hover:bg-brand-accent transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {orderPlaced ? (
                       <>Pedido Realizado! 🎉</>

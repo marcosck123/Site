@@ -196,7 +196,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-brand-primary text-white py-4 rounded-2xl font-bold shadow-lg shadow-pink-100 hover:bg-brand-accent transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                  className="w-full bg-brand-primary text-brand-secondary py-4 rounded-2xl font-bold shadow-lg shadow-brand-primary/20 hover:bg-brand-accent transition-all flex items-center justify-center gap-2 disabled:opacity-70"
                 >
                   {isLoading ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

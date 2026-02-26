@@ -52,15 +52,15 @@ export default function Products({ onAddToCart }: ProductsPageProps) {
       {/* Categories Scroll */}
       <div className="flex gap-3 overflow-x-auto pb-8 no-scrollbar -mx-6 px-6">
         {CATEGORIES.map((category) => (
-          <button
-            key={category}
-            onClick={() => setSelectedCategory(category)}
-            className={`px-6 py-3 rounded-2xl font-bold whitespace-nowrap transition-all ${
-              selectedCategory === category
-                ? 'bg-brand-primary text-white shadow-lg shadow-pink-100 scale-105'
-                : 'bg-white text-stone-600 border border-stone-100 hover:bg-stone-50'
-            }`}
-          >
+            <button
+              key={category}
+              onClick={() => setSelectedCategory(category)}
+              className={`px-6 py-3 rounded-2xl font-bold whitespace-nowrap transition-all ${
+                selectedCategory === category
+                  ? 'bg-brand-primary text-brand-secondary shadow-lg shadow-brand-primary/20 scale-105'
+                  : 'bg-white text-stone-600 border border-stone-100 hover:bg-stone-50'
+              }`}
+            >
             {category}
           </button>
         ))}
@@ -107,7 +107,7 @@ export default function Products({ onAddToCart }: ProductsPageProps) {
                   </div>
                   <button
                     onClick={() => onAddToCart(product)}
-                    className="bg-brand-secondary text-brand-primary p-3 rounded-xl hover:bg-brand-primary hover:text-white transition-all active:scale-95"
+                    className="bg-brand-secondary text-brand-primary p-3 rounded-xl hover:bg-brand-primary hover:text-brand-secondary transition-all active:scale-95"
                   >
                     <ShoppingBag size={20} />
                   </button>

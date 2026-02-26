@@ -18,7 +18,7 @@ export default function Home() {
             className="w-full h-full object-cover"
             referrerPolicy="no-referrer"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-brand-primary/90 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-brand-primary/80 to-transparent" />
         </div>
         
         <div className="container mx-auto px-6 relative z-10">
@@ -26,28 +26,28 @@ export default function Home() {
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
-            className="max-w-2xl text-white"
+            className="max-w-2xl text-brand-secondary"
           >
-            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-4 py-2 rounded-full text-sm font-bold mb-6 border border-white/30">
-              <Sparkles size={16} className="text-yellow-300" />
+            <div className="inline-flex items-center gap-2 bg-brand-primary/20 backdrop-blur-md px-4 py-2 rounded-full text-sm font-bold mb-6 border border-brand-secondary/30">
+              <Sparkles size={16} className="text-brand-secondary" />
               <span>OS MELHORES DOCES DA CIDADE</span>
             </div>
-            <h1 className="text-6xl md:text-7xl font-black leading-tight mb-6">
+            <h1 className="text-6xl md:text-7xl font-black leading-tight mb-6 text-brand-secondary">
               A Felicidade em <br />
-              <span className="text-brand-secondary">Cada Mordida.</span>
+              <span className="text-white">Cada Mordida.</span>
             </h1>
-            <p className="text-xl text-white/80 mb-10 max-w-lg">
+            <p className="text-xl text-brand-secondary/80 mb-10 max-w-lg">
               Descubra um mundo de sabores artesanais, feitos com amor e entregues na sua porta em minutos.
             </p>
             <div className="flex flex-wrap gap-4">
               <Link 
                 to="/produtos" 
-                className="bg-white text-brand-primary px-8 py-4 rounded-2xl font-bold text-lg shadow-xl hover:scale-105 transition-transform flex items-center gap-2"
+                className="bg-brand-primary text-brand-secondary px-8 py-4 rounded-2xl font-bold text-lg shadow-xl shadow-brand-primary/20 hover:scale-105 transition-transform flex items-center gap-2"
               >
                 Ver Cardápio
                 <ArrowRight size={20} />
               </Link>
-              <button className="bg-brand-primary/20 backdrop-blur-md border border-white/30 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:bg-white/30 transition-all">
+              <button className="bg-white/10 backdrop-blur-md border border-brand-secondary/30 text-brand-secondary px-8 py-4 rounded-2xl font-bold text-lg hover:bg-white/20 transition-all">
                 Nossa História
               </button>
             </div>
@@ -69,17 +69,17 @@ export default function Home() {
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {[
-            { name: 'Brigadeiros', icon: '🍫', color: 'bg-amber-100' },
-            { name: 'Bolos', icon: '🍰', color: 'bg-pink-100' },
-            { name: 'Cookies', icon: '🍪', color: 'bg-orange-100' },
-            { name: 'Bebidas', icon: '🥤', color: 'bg-blue-100' },
+            { name: 'Brigadeiros', icon: '🍫', color: 'bg-[#E5D2B7]' },
+            { name: 'Bolos', icon: '🍰', color: 'bg-[#CAAB8A]' },
+            { name: 'Cookies', icon: '🍪', color: 'bg-[#A37C53]' },
+            { name: 'Bebidas', icon: '🥤', color: 'bg-[#61401E]' },
           ].map((cat, i) => (
             <motion.div
               key={cat.name}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
-              className={`${cat.color} p-8 rounded-[32px] text-center cursor-pointer hover:scale-105 transition-transform group`}
+              className={`${cat.color} ${i === 3 ? 'text-brand-secondary' : 'text-stone-800'} p-8 rounded-[32px] text-center cursor-pointer hover:scale-105 transition-transform group`}
             >
               <span className="text-5xl mb-4 block group-hover:scale-110 transition-transform">{cat.icon}</span>
               <h3 className="font-bold text-stone-800">{cat.name}</h3>
@@ -125,7 +125,7 @@ export default function Home() {
                 <p className="text-stone-500 text-sm mb-6 line-clamp-2">{product.description}</p>
                 <Link 
                   to="/produtos"
-                  className="w-full bg-stone-50 text-stone-800 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-brand-primary hover:text-white transition-all"
+                  className="w-full bg-stone-50 text-stone-800 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-brand-primary hover:text-brand-secondary transition-all"
                 >
                   <ShoppingBag size={18} />
                   Adicionar
@@ -138,14 +138,14 @@ export default function Home() {
 
       {/* Banner Section */}
       <section className="container mx-auto px-6">
-        <div className="bg-brand-accent rounded-[40px] p-12 flex flex-col md:flex-row items-center gap-12 overflow-hidden relative">
+        <div className="bg-brand-primary rounded-[40px] p-12 flex flex-col md:flex-row items-center gap-12 overflow-hidden relative">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl" />
-          <div className="flex-1 text-white relative z-10">
+          <div className="flex-1 text-brand-secondary relative z-10">
             <h2 className="text-4xl font-black mb-6">Ganhe 20% de desconto na sua primeira compra!</h2>
-            <p className="text-white/80 text-lg mb-8">Use o cupom <span className="bg-white/20 px-3 py-1 rounded-lg font-mono font-bold">DOCE20</span> no checkout.</p>
+            <p className="text-brand-secondary/80 text-lg mb-8">Use o cupom <span className="bg-white/20 px-3 py-1 rounded-lg font-mono font-bold">DOCE20</span> no checkout.</p>
             <Link 
               to="/produtos"
-              className="bg-white text-brand-accent px-8 py-4 rounded-2xl font-bold text-lg shadow-xl hover:scale-105 transition-transform inline-block"
+              className="bg-brand-secondary text-brand-primary px-8 py-4 rounded-2xl font-bold text-lg shadow-xl shadow-brand-primary/20 hover:scale-105 transition-transform inline-block"
             >
               Aproveitar Agora
             </Link>

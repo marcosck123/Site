@@ -5,14 +5,15 @@
   --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Playfair Display", serif;
   
-  --color-brand-primary: #ec4899;
-  --color-brand-secondary: #fdf2f8;
-  --color-brand-accent: #db2777;
+  --color-brand-primary: #61401E; /* Expresso */
+  --color-brand-secondary: #E5D2B7; /* Almond Milk */
+  --color-brand-accent: #A37C53; /* Capuccino */
+  --color-brand-muted: #CAAB8A; /* Chocolate Milk */
 }
 
 @layer base {
   body {
-    @apply bg-stone-50 text-stone-900;
+    @apply bg-[#F9F5F0] text-[#4A3728];
   }
 }
 
