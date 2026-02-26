@@ -2,6 +2,15 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Mail, Lock, User, ArrowRight, Github, Chrome } from 'lucide-react';
 import { User as UserType } from '../types';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  updateProfile,
+  signInWithPopup,
+  GoogleAuthProvider,
+  GithubAuthProvider
+} from 'firebase/auth';
+import { auth } from '../services/firebase';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -15,23 +24,63 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
     
-    // Simulate API call
-    setTimeout(() => {
-      const mockUser: UserType = {
-        id: 'user_' + Math.random().toString(36).substr(2, 9),
-        name: isLogin ? 'Marcos Eduardo' : name,
-        email: email,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`
-      };
-      onLogin(mockUser);
-      setIsLoading(false);
+    try {
+      if (isLogin) {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        onLogin({
+          id: user.uid,
+          name: user.displayName || 'Usuário',
+          email: user.email || '',
+          avatar: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`
+        });
+      } else {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        await updateProfile(user, { displayName: name });
+        onLogin({
+          id: user.uid,
+          name: name,
+          email: user.email || '',
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`
+        });
+      }
       onClose();
-    }, 1500);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Ocorreu um erro na autenticação.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSocialLogin = async (providerName: 'google' | 'github') => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const provider = providerName === 'google' ? new GoogleAuthProvider() : new GithubAuthProvider();
+      const userCredential = await signInWithPopup(auth, provider);
+      const user = userCredential.user;
+      onLogin({
+        id: user.uid,
+        name: user.displayName || 'Usuário',
+        email: user.email || '',
+        avatar: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`
+      });
+      onClose();
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Ocorreu um erro no login social.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -72,6 +121,12 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
                     : 'Junte-se a nós para uma experiência mais doce.'}
                 </p>
               </div>
+
+              {error && (
+                <div className="mb-4 p-3 bg-red-50 text-red-600 text-xs rounded-xl border border-red-100">
+                  {error}
+                </div>
+              )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 {!isLogin && (
@@ -154,11 +209,19 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <button className="flex items-center justify-center gap-2 py-3 border border-stone-100 rounded-2xl hover:bg-stone-50 transition-colors font-medium text-sm">
+                <button 
+                  onClick={() => handleSocialLogin('google')}
+                  disabled={isLoading}
+                  className="flex items-center justify-center gap-2 py-3 border border-stone-100 rounded-2xl hover:bg-stone-50 transition-colors font-medium text-sm disabled:opacity-50"
+                >
                   <Chrome size={18} className="text-red-500" />
                   Google
                 </button>
-                <button className="flex items-center justify-center gap-2 py-3 border border-stone-100 rounded-2xl hover:bg-stone-50 transition-colors font-medium text-sm">
+                <button 
+                  onClick={() => handleSocialLogin('github')}
+                  disabled={isLoading}
+                  className="flex items-center justify-center gap-2 py-3 border border-stone-100 rounded-2xl hover:bg-stone-50 transition-colors font-medium text-sm disabled:opacity-50"
+                >
                   <Github size={18} />
                   GitHub
                 </button>

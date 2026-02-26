@@ -22,6 +22,8 @@ import { PRODUCTS, CATEGORIES } from './constants';
 import { Product, CartItem, Category, User } from './types';
 import { NotificationService } from './services/notificationService';
 import AuthModal from './components/AuthModal';
+import { auth } from './services/firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<Category>('Todos');
@@ -38,28 +40,41 @@ export default function App() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   useEffect(() => {
-    // Check for saved user in localStorage
-    const savedUser = localStorage.getItem('doce_entrega_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
+    // Firebase Auth Listener
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        setUser({
+          id: firebaseUser.uid,
+          name: firebaseUser.displayName || 'Usuário',
+          email: firebaseUser.email || '',
+          avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.email}`
+        });
+      } else {
+        setUser(null);
+      }
+    });
 
     // Show prompt after 3 seconds if permission is still default
     if (notificationPermission === 'default') {
       const timer = setTimeout(() => setShowNotificationPrompt(true), 3000);
       return () => clearTimeout(timer);
     }
+
+    return () => unsubscribe();
   }, [notificationPermission]);
 
   const handleLogin = (newUser: User) => {
     setUser(newUser);
-    localStorage.setItem('doce_entrega_user', JSON.stringify(newUser));
   };
 
-  const handleLogout = () => {
-    setUser(null);
-    localStorage.removeItem('doce_entrega_user');
-    setIsUserMenuOpen(false);
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      setUser(null);
+      setIsUserMenuOpen(false);
+    } catch (error) {
+      console.error('Erro ao sair:', error);
+    }
   };
 
   const handleRequestPermission = async () => {
