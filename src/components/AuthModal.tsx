@@ -25,7 +25,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(
-    !isFirebaseConfigValid ? 'Configuração do Firebase ausente. Verifique as variáveis de ambiente.' : null
+    !isFirebaseConfigValid ? 'Configuração do Firebase ausente. Certifique-se de que as variáveis de ambiente (Secrets) foram adicionadas e o servidor foi reiniciado.' : null
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
