@@ -92,6 +92,13 @@ export const LocalDB = {
   setCurrentUser: (user: User | null) => {
     if (user) {
       localStorage.setItem(DB_KEYS.CURRENT_USER, JSON.stringify(user));
+      // Also update in users list
+      const users = LocalDB.getUsers();
+      const index = users.findIndex(u => u.id === user.id);
+      if (index !== -1) {
+        users[index] = user;
+        LocalDB.saveUsers(users);
+      }
     } else {
       localStorage.removeItem(DB_KEYS.CURRENT_USER);
     }

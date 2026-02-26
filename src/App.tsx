@@ -17,6 +17,7 @@ import { Product, CartItem, User } from './types';
 import AuthModal from './components/AuthModal';
 import { LocalDB } from './services/localDB';
 import Admin from './pages/Admin';
+import Profile from './pages/Profile';
 
 // Pages
 import Home from './pages/Home';
@@ -166,9 +167,13 @@ function AppContent() {
                           <LayoutDashboard size={18} /> Painel Admin
                         </Link>
                       )}
-                      <button className="w-full px-4 py-3 text-left text-sm font-bold text-stone-700 hover:bg-stone-50 flex items-center gap-2">
+                      <Link 
+                        to="/perfil"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="w-full px-4 py-3 text-left text-sm font-bold text-stone-700 hover:bg-stone-50 flex items-center gap-2"
+                      >
                         <UserIcon size={18} /> Perfil
-                      </button>
+                      </Link>
                       <button className="w-full px-4 py-3 text-left text-sm font-bold text-stone-700 hover:bg-stone-50 flex items-center gap-2">
                         <Package size={18} /> Meus Pedidos
                       </button>
@@ -201,6 +206,7 @@ function AppContent() {
           <Route path="/" element={<Home />} />
           <Route path="/produtos" element={<Products onAddToCart={addToCart} />} />
           <Route path="/admin" element={user?.isAdmin ? <Admin /> : <Home />} />
+          <Route path="/perfil" element={user ? <Profile user={user} onUpdate={setUser} /> : <Home />} />
         </Routes>
       </main>
 
@@ -244,77 +250,6 @@ function AppContent() {
           </div>
         </div>
       </footer>
-
-      {/* Mobile Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-stone-100 px-6 py-4 flex justify-around items-center md:hidden z-50">
-        <Link to="/" className={`flex flex-col items-center gap-1 ${location.pathname === '/' ? 'text-brand-primary' : 'text-stone-400'}`}>
-          <HomeIcon size={24} />
-          <span className="text-[10px] font-bold">Início</span>
-        </Link>
-        <Link to="/produtos" className={`flex flex-col items-center gap-1 ${location.pathname === '/produtos' ? 'text-brand-primary' : 'text-stone-400'}`}>
-          <Package size={24} />
-          <span className="text-[10px] font-bold">Produtos</span>
-        </Link>
-        <button 
-          onClick={() => setIsCartOpen(true)}
-          className="relative flex flex-col items-center gap-1 text-stone-400"
-        >
-          <ShoppingBag size={24} />
-          <span className="text-[10px] font-bold">Carrinho</span>
-          {cartCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-brand-accent text-white text-[8px] font-bold rounded-full flex items-center justify-center border border-white">
-              {cartCount}
-            </span>
-          )}
-        </button>
-        <div className="relative">
-          <button 
-            onClick={() => user ? setIsUserMenuOpen(!isUserMenuOpen) : setIsAuthModalOpen(true)}
-            className={`flex flex-col items-center gap-1 ${user ? 'text-brand-primary' : 'text-stone-400'}`}
-          >
-            {user ? (
-              <img src={user.avatar} alt={user.name} className="w-6 h-6 rounded-full border border-brand-primary" />
-            ) : (
-              <UserIcon size={24} />
-            )}
-            <span className="text-[10px] font-bold">{user ? 'Perfil' : 'Entrar'}</span>
-          </button>
-          
-          <AnimatePresence>
-            {isUserMenuOpen && user && (
-              <motion.div
-                initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                className="absolute bottom-full right-0 mb-3 w-48 bg-white rounded-2xl shadow-2xl border border-stone-100 py-2 z-50"
-              >
-                {user.isAdmin && (
-                  <Link 
-                    to="/admin"
-                    onClick={() => setIsUserMenuOpen(false)}
-                    className="w-full px-4 py-3 text-left text-sm font-bold text-brand-primary hover:bg-stone-50 flex items-center gap-2"
-                  >
-                    <LayoutDashboard size={18} /> Painel Admin
-                  </Link>
-                )}
-                <button className="w-full px-4 py-3 text-left text-sm font-bold text-stone-700 hover:bg-stone-50 flex items-center gap-2">
-                  <UserIcon size={18} /> Perfil
-                </button>
-                <button className="w-full px-4 py-3 text-left text-sm font-bold text-stone-700 hover:bg-stone-50 flex items-center gap-2">
-                  <Package size={18} /> Meus Pedidos
-                </button>
-                <div className="h-px bg-stone-100 my-1 mx-4" />
-                <button 
-                  onClick={handleLogout}
-                  className="w-full px-4 py-3 text-left text-sm font-bold text-red-500 hover:bg-red-50 flex items-center gap-2"
-                >
-                  <LogOut size={18} /> Sair
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </nav>
 
       {/* Cart Drawer */}
       <AnimatePresence>
