@@ -9,6 +9,9 @@ import {
   Home as HomeIcon,
   Package,
   User as UserIcon,
+  CreditCard,
+  Banknote,
+  QrCode,
   LayoutDashboard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -33,6 +36,7 @@ function AppContent() {
   const [user, setUser] = useState<User | null>(LocalDB.getCurrentUser());
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'credit' | 'pix' | 'cash'>('pix');
 
   useEffect(() => {
     LocalDB.saveCart(cart);
@@ -98,7 +102,8 @@ function AppContent() {
       status: 'Pendente' as const,
       createdAt: new Date().toISOString(),
       address: user.address || 'Endereço não informado',
-      phone: user.phone || 'Telefone não informado'
+      phone: user.phone || 'Telefone não informado',
+      paymentMethod
     };
 
     LocalDB.addOrder(newOrder);
@@ -123,7 +128,7 @@ function AppContent() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-8">
-            <Link to="/" className={`font-bold hover:text-brand-primary transition-colors ${location.pathname === '/' ? 'text-brand-primary' : 'text-stone-600'}`}>Início</Link>
+            <Link to="/" className={`font-bold hover:text-brand-primary transition-colors ${location.pathname === '/' ? 'text-brand-primary' : 'text-stone-600'}`}>Página Inicial</Link>
             <Link to="/produtos" className={`font-bold hover:text-brand-primary transition-colors ${location.pathname === '/produtos' ? 'text-brand-primary' : 'text-stone-600'}`}>Produtos</Link>
           </nav>
 
@@ -350,6 +355,34 @@ function AppContent() {
                     <span>Entrega</span>
                     <span className="text-emerald-500 font-bold">Grátis</span>
                   </div>
+
+                  <div className="space-y-3">
+                    <label className="text-xs font-black text-stone-400 uppercase tracking-wider">Forma de Pagamento</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button 
+                        onClick={() => setPaymentMethod('pix')}
+                        className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${paymentMethod === 'pix' ? 'bg-brand-primary/5 border-brand-primary text-brand-primary shadow-sm' : 'bg-white border-stone-100 text-stone-400 hover:border-stone-200'}`}
+                      >
+                        <QrCode size={20} />
+                        <span className="text-[10px] font-bold">Pix</span>
+                      </button>
+                      <button 
+                        onClick={() => setPaymentMethod('credit')}
+                        className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${paymentMethod === 'credit' ? 'bg-brand-primary/5 border-brand-primary text-brand-primary shadow-sm' : 'bg-white border-stone-100 text-stone-400 hover:border-stone-200'}`}
+                      >
+                        <CreditCard size={20} />
+                        <span className="text-[10px] font-bold">Cartão</span>
+                      </button>
+                      <button 
+                        onClick={() => setPaymentMethod('cash')}
+                        className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${paymentMethod === 'cash' ? 'bg-brand-primary/5 border-brand-primary text-brand-primary shadow-sm' : 'bg-white border-stone-100 text-stone-400 hover:border-stone-200'}`}
+                      >
+                        <Banknote size={20} />
+                        <span className="text-[10px] font-bold">Dinheiro</span>
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="pt-4 border-t border-stone-200 flex justify-between items-center mb-6">
                     <span className="text-lg font-bold text-stone-900">Total</span>
                     <span className="text-2xl font-black text-brand-primary">R$ {cartTotal.toFixed(2)}</span>

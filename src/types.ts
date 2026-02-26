@@ -36,6 +36,7 @@ export interface Order {
   createdAt: string;
   address: string;
   phone: string;
+  paymentMethod: 'credit' | 'pix' | 'cash';
 }
 
 export type Category = 'Todos' | 'Brigadeiros' | 'Bolos' | 'Tortas' | 'Cookies' | 'Gelados';
