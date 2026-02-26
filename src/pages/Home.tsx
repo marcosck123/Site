@@ -15,7 +15,7 @@ export default function Home() {
   return (
     <div className="space-y-16 pb-20">
       {/* Hero Section */}
-      <section className="relative h-[600px] flex items-center overflow-hidden rounded-b-[40px]">
+      <section className="relative min-h-[500px] md:h-[600px] flex items-center overflow-hidden rounded-b-[40px]">
         <div className="absolute inset-0">
           <img 
             src="https://picsum.photos/seed/bakery/1920/1080?blur=2" 
@@ -37,11 +37,11 @@ export default function Home() {
               <Sparkles size={16} className="text-brand-secondary" />
               <span>OS MELHORES DOCES DA CIDADE</span>
             </div>
-            <h1 className="text-6xl md:text-7xl font-black leading-tight mb-6 text-brand-secondary">
+            <h1 className="text-4xl md:text-7xl font-black leading-tight mb-6 text-brand-secondary">
               A Felicidade em <br />
               <span className="text-white">Cada Mordida.</span>
             </h1>
-            <p className="text-xl text-brand-secondary/80 mb-10 max-w-lg">
+            <p className="text-lg md:text-xl text-brand-secondary/80 mb-10 max-w-lg">
               Descubra um mundo de sabores artesanais, feitos com amor e entregues na sua porta em minutos.
             </p>
             <div className="flex flex-wrap gap-4">
@@ -143,10 +143,10 @@ export default function Home() {
 
       {/* Banner Section */}
       <section className="container mx-auto px-6">
-        <div className="bg-brand-primary rounded-[40px] p-12 flex flex-col md:flex-row items-center gap-12 overflow-hidden relative">
+        <div className="bg-brand-primary rounded-[40px] p-8 md:p-12 flex flex-col md:flex-row items-center gap-12 overflow-hidden relative">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl" />
-          <div className="flex-1 text-brand-secondary relative z-10">
-            <h2 className="text-4xl font-black mb-6">Ganhe 20% de desconto na sua primeira compra!</h2>
+          <div className="flex-1 text-brand-secondary relative z-10 text-center md:text-left">
+            <h2 className="text-3xl md:text-4xl font-black mb-6">Ganhe 20% de desconto na sua primeira compra!</h2>
             <p className="text-brand-secondary/80 text-lg mb-8">Use o cupom <span className="bg-white/20 px-3 py-1 rounded-lg font-mono font-bold">DOCE20</span> no checkout.</p>
             <Link 
               to="/produtos"

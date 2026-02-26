@@ -97,7 +97,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-3xl shadow-2xl z-[70] overflow-hidden"
           >
-            <div className="relative p-8">
+            <div className="relative p-6 md:p-8">
               <button
                 onClick={onClose}
                 className="absolute right-6 top-6 p-2 hover:bg-stone-100 rounded-full text-stone-400 transition-colors"

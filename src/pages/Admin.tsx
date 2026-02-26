@@ -144,9 +144,9 @@ export default function Admin() {
   ];
 
   return (
-    <div className="min-h-screen bg-stone-50 flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-brand-primary text-brand-secondary p-6 flex flex-col gap-8">
+    <div className="min-h-screen bg-stone-50 flex flex-col md:flex-row">
+      {/* Sidebar - Desktop */}
+      <aside className="hidden md:flex w-64 bg-brand-primary text-brand-secondary p-6 flex-col gap-8 sticky top-0 h-screen">
         <div className="flex items-center gap-2">
           <div className="w-10 h-10 bg-brand-secondary rounded-xl flex items-center justify-center text-brand-primary">
             <ShoppingBag size={24} />
@@ -176,8 +176,38 @@ export default function Admin() {
         </nav>
       </aside>
 
+      {/* Mobile Header */}
+      <header className="md:hidden bg-brand-primary text-brand-secondary p-4 sticky top-0 z-50 flex items-center justify-between shadow-lg">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-brand-secondary rounded-lg flex items-center justify-center text-brand-primary">
+            <ShoppingBag size={18} />
+          </div>
+          <span className="text-lg font-black tracking-tighter uppercase">{activeTab}</span>
+        </div>
+        <nav className="flex gap-2">
+          <button 
+            onClick={() => setActiveTab('dashboard')}
+            className={`p-2 rounded-lg transition-all ${activeTab === 'dashboard' ? 'bg-brand-secondary text-brand-primary' : 'text-brand-secondary/60'}`}
+          >
+            <LayoutDashboard size={20} />
+          </button>
+          <button 
+            onClick={() => setActiveTab('orders')}
+            className={`p-2 rounded-lg transition-all ${activeTab === 'orders' ? 'bg-brand-secondary text-brand-primary' : 'text-brand-secondary/60'}`}
+          >
+            <ShoppingBag size={20} />
+          </button>
+          <button 
+            onClick={() => setActiveTab('products')}
+            className={`p-2 rounded-lg transition-all ${activeTab === 'products' ? 'bg-brand-secondary text-brand-primary' : 'text-brand-secondary/60'}`}
+          >
+            <Package size={20} />
+          </button>
+        </nav>
+      </header>
+
       {/* Main Content */}
-      <main className="flex-1 p-10 overflow-y-auto">
+      <main className="flex-1 p-4 md:p-10 overflow-y-auto">
         {activeTab === 'dashboard' && (
           <div className="space-y-8">
             <header>
@@ -220,7 +250,7 @@ export default function Admin() {
                 <h3 className="text-xl font-bold text-stone-900 mb-6 flex items-center gap-2">
                   <Calendar size={20} className="text-brand-primary" /> Vendas Semanais
                 </h3>
-                <div className="h-[300px]">
+                <div className="h-[250px] md:h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={statsData}>
                       <defs>
@@ -245,7 +275,7 @@ export default function Admin() {
                 <h3 className="text-xl font-bold text-stone-900 mb-6 flex items-center gap-2">
                   <TrendingUp size={20} className="text-brand-primary" /> Receita Anual
                 </h3>
-                <div className="h-[300px]">
+                <div className="h-[250px] md:h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={monthlyData}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
@@ -273,8 +303,8 @@ export default function Admin() {
               </div>
             </header>
 
-            <div className="bg-white rounded-[40px] shadow-sm border border-stone-100 overflow-hidden">
-              <table className="w-full text-left">
+            <div className="bg-white rounded-[40px] shadow-sm border border-stone-100 overflow-x-auto">
+              <table className="w-full text-left min-w-[800px]">
                 <thead className="bg-stone-50 text-stone-500 text-xs font-black uppercase tracking-wider">
                   <tr>
                     <th className="px-8 py-4">ID / Data</th>
@@ -448,9 +478,9 @@ export default function Admin() {
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-white rounded-[40px] shadow-2xl z-[90] overflow-hidden"
             >
-              <form onSubmit={handleSaveProduct} className="p-10 space-y-6">
+              <form onSubmit={handleSaveProduct} className="p-6 md:p-10 space-y-6 max-h-[90vh] overflow-y-auto">
                 <header className="flex justify-between items-center mb-4">
-                  <h2 className="text-2xl font-black text-stone-900">
+                  <h2 className="text-xl md:text-2xl font-black text-stone-900">
                     {editingProduct ? 'Editar Produto' : 'Novo Produto'}
                   </h2>
                   <button type="button" onClick={() => setIsProductModalOpen(false)} className="text-stone-400 hover:text-stone-600">
@@ -458,7 +488,7 @@ export default function Admin() {
                   </button>
                 </header>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                   <div className="col-span-2 space-y-1">
                     <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Nome do Produto</label>
                     <input 
