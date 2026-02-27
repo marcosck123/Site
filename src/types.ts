@@ -40,4 +40,4 @@ export interface Order {
   changeFor?: number;
 }
 
-export type Category = 'Todos' | 'Brigadeiros' | 'Bolos' | 'Tortas' | 'Cookies' | 'Gelados';
+export type Category = string;

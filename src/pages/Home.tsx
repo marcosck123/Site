@@ -7,9 +7,11 @@ import { Product } from '../types';
 
 export default function Home() {
   const [featuredProducts, setFeaturedProducts] = React.useState<Product[]>([]);
+  const [categories, setCategories] = React.useState<string[]>([]);
 
   React.useEffect(() => {
     setFeaturedProducts(LocalDB.getProducts().slice(0, 4));
+    setCategories(LocalDB.getCategories().slice(0, 4));
   }, []);
 
   return (
@@ -73,21 +75,16 @@ export default function Home() {
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {[
-            { name: 'Brigadeiros', icon: '🍫', color: 'bg-[#E5D2B7]' },
-            { name: 'Bolos', icon: '🍰', color: 'bg-[#CAAB8A]' },
-            { name: 'Cookies', icon: '🍪', color: 'bg-[#A37C53]' },
-            { name: 'Bebidas', icon: '🥤', color: 'bg-[#61401E]' },
-          ].map((cat, i) => (
+          {categories.map((cat, i) => (
             <motion.div
-              key={cat.name}
+              key={cat}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
-              className={`${cat.color} ${i === 3 ? 'text-brand-secondary' : 'text-stone-800'} p-8 rounded-[32px] text-center cursor-pointer hover:scale-105 transition-transform group`}
+              className={`bg-stone-100 p-8 rounded-[32px] text-center cursor-pointer hover:scale-105 transition-transform group`}
             >
-              <span className="text-5xl mb-4 block group-hover:scale-110 transition-transform">{cat.icon}</span>
-              <h3 className="font-bold text-stone-800">{cat.name}</h3>
+              <span className="text-5xl mb-4 block group-hover:scale-110 transition-transform">✨</span>
+              <h3 className="font-bold text-stone-800">{cat}</h3>
             </motion.div>
           ))}
         </div>

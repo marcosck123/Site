@@ -20,7 +20,8 @@ import {
   Phone,
   CreditCard,
   Banknote,
-  QrCode
+  QrCode,
+  Tag
 } from 'lucide-react';
 import { Product, Order, OrderStatus } from '../types';
 import { LocalDB } from '../services/localDB';
@@ -39,9 +40,11 @@ import {
 } from 'recharts';
 
 export default function Admin() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products' | 'categories'>('dashboard');
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [newCategory, setNewCategory] = useState('');
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
@@ -52,13 +55,18 @@ export default function Admin() {
     price: '',
     promoPrice: '',
     image: '',
-    category: 'Brigadeiros',
+    category: '',
     deliveryTime: '20-30 min'
   });
 
   useEffect(() => {
     setProducts(LocalDB.getProducts());
     setOrders(LocalDB.getOrders());
+    const cats = LocalDB.getCategories();
+    setCategories(cats);
+    if (cats.length > 0) {
+      setFormData(prev => ({ ...prev, category: cats[0] }));
+    }
   }, []);
 
   const handleUpdateOrderStatus = (orderId: string, status: OrderStatus) => {
@@ -106,9 +114,30 @@ export default function Admin() {
       price: '',
       promoPrice: '',
       image: '',
-      category: 'Brigadeiros',
+      category: categories[0] || 'Geral',
       deliveryTime: '20-30 min'
     });
+  };
+
+  const handleAddCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCategory.trim()) return;
+    if (categories.includes(newCategory.trim())) {
+      alert('Esta categoria já existe!');
+      return;
+    }
+    const updated = [...categories, newCategory.trim()];
+    setCategories(updated);
+    LocalDB.saveCategories(updated);
+    setNewCategory('');
+  };
+
+  const handleDeleteCategory = (cat: string) => {
+    if (confirm(`Tem certeza que deseja excluir a categoria "${cat}"?`)) {
+      const updated = categories.filter(c => c !== cat);
+      setCategories(updated);
+      LocalDB.saveCategories(updated);
+    }
   };
 
   const handleDeleteProduct = (id: string) => {
@@ -188,6 +217,12 @@ export default function Admin() {
           >
             <Package size={20} /> Produtos
           </button>
+          <button 
+            onClick={() => setActiveTab('categories')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'categories' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
+          >
+            <Tag size={20} /> Categorias
+          </button>
         </nav>
       </aside>
 
@@ -217,6 +252,12 @@ export default function Admin() {
             className={`p-2 rounded-lg transition-all ${activeTab === 'products' ? 'bg-brand-secondary text-brand-primary' : 'text-brand-secondary/60'}`}
           >
             <Package size={20} />
+          </button>
+          <button 
+            onClick={() => setActiveTab('categories')}
+            className={`p-2 rounded-lg transition-all ${activeTab === 'categories' ? 'bg-brand-secondary text-brand-primary' : 'text-brand-secondary/60'}`}
+          >
+            <Tag size={20} />
           </button>
         </nav>
       </header>
@@ -452,7 +493,7 @@ export default function Admin() {
                     price: '',
                     promoPrice: '',
                     image: '',
-                    category: 'Brigadeiros',
+                    category: categories[0] || 'Geral',
                     deliveryTime: '20-30 min'
                   });
                   setIsProductModalOpen(true);
@@ -504,6 +545,47 @@ export default function Admin() {
             </div>
           </div>
         )}
+
+        {activeTab === 'categories' && (
+          <div className="space-y-8">
+            <header>
+              <h1 className="text-3xl font-black text-stone-900">Categorias</h1>
+              <p className="text-stone-500">Gerencie as categorias dos seus produtos</p>
+            </header>
+
+            <div className="max-w-md bg-white p-8 rounded-[40px] shadow-sm border border-stone-100">
+              <form onSubmit={handleAddCategory} className="flex gap-2 mb-8">
+                <input 
+                  type="text" 
+                  placeholder="Nova categoria..."
+                  value={newCategory}
+                  onChange={e => setNewCategory(e.target.value)}
+                  className="flex-1 bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none"
+                />
+                <button 
+                  type="submit"
+                  className="bg-brand-primary text-brand-secondary p-3 rounded-2xl font-bold hover:scale-105 transition-all"
+                >
+                  <Plus size={24} />
+                </button>
+              </form>
+
+              <div className="space-y-2">
+                {categories.map(cat => (
+                  <div key={cat} className="flex items-center justify-between p-4 bg-stone-50 rounded-2xl border border-stone-100 group">
+                    <span className="font-bold text-stone-700">{cat}</span>
+                    <button 
+                      onClick={() => handleDeleteCategory(cat)}
+                      className="p-2 text-stone-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Product Modal */}
@@ -521,7 +603,7 @@ export default function Admin() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed left-0 right-0 bottom-0 md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 w-full md:max-w-lg bg-white rounded-t-[40px] md:rounded-[40px] shadow-2xl z-[90] overflow-hidden"
+              className="fixed left-0 right-0 bottom-0 md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 w-full md:max-w-2xl bg-white rounded-t-[40px] md:rounded-[40px] shadow-2xl z-[90] overflow-hidden"
             >
               <form onSubmit={handleSaveProduct} className="p-6 md:p-10 space-y-6 max-h-[90vh] overflow-y-auto">
                 <header className="flex justify-between items-center mb-4">
@@ -588,11 +670,9 @@ export default function Admin() {
                         onChange={e => setFormData({...formData, category: e.target.value})}
                         className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none"
                       >
-                        <option>Brigadeiros</option>
-                        <option>Bolos</option>
-                        <option>Tortas</option>
-                        <option>Cookies</option>
-                        <option>Gelados</option>
+                        {categories.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
                       </select>
                     </div>
 

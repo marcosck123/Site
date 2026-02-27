@@ -1,8 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, ShoppingBag, Star, Clock, Heart, X } from 'lucide-react';
-import { CATEGORIES } from '../constants';
-import { Product, Category } from '../types';
+import { Product } from '../types';
 import { LocalDB } from '../services/localDB';
 
 interface ProductsPageProps {
@@ -10,12 +9,14 @@ interface ProductsPageProps {
 }
 
 export default function Products({ onAddToCart }: ProductsPageProps) {
-  const [selectedCategory, setSelectedCategory] = useState<Category>('Todos');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   const [searchQuery, setSearchQuery] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
 
   useEffect(() => {
     setProducts(LocalDB.getProducts());
+    setCategories(['Todos', ...LocalDB.getCategories()]);
   }, []);
 
   const filteredProducts = useMemo(() => {
@@ -57,7 +58,7 @@ export default function Products({ onAddToCart }: ProductsPageProps) {
 
       {/* Categories Scroll */}
       <div className="flex gap-3 overflow-x-auto pb-8 no-scrollbar -mx-6 px-6">
-        {CATEGORIES.map((category) => (
+        {categories.map((category) => (
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}

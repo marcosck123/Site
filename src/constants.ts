@@ -82,5 +82,3 @@ export const PRODUCTS: Product[] = [
     deliveryTime: '15-25 min'
   }
 ];
-
-export const CATEGORIES: string[] = ['Todos', 'Brigadeiros', 'Bolos', 'Tortas', 'Cookies', 'Gelados'];

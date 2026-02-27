@@ -6,9 +6,11 @@ const DB_KEYS = {
   CART: 'doce_entrega_cart',
   CURRENT_USER: 'doce_entrega_current_user',
   ORDERS: 'doce_entrega_orders',
+  CATEGORIES: 'doce_entrega_categories',
 };
 
 // Initial data if empty
+const INITIAL_CATEGORIES = ['Brigadeiros', 'Bolos', 'Tortas', 'Cookies', 'Gelados'];
 const INITIAL_PRODUCTS: Product[] = [
   {
     id: '1',
@@ -148,5 +150,19 @@ export const LocalDB = {
       orderCount: orders.length,
       // More complex stats would go here
     };
+  },
+
+  // Categories
+  getCategories: (): string[] => {
+    const data = localStorage.getItem(DB_KEYS.CATEGORIES);
+    if (!data) {
+      localStorage.setItem(DB_KEYS.CATEGORIES, JSON.stringify(INITIAL_CATEGORIES));
+      return INITIAL_CATEGORIES;
+    }
+    return JSON.parse(data);
+  },
+
+  saveCategories: (categories: string[]) => {
+    localStorage.setItem(DB_KEYS.CATEGORIES, JSON.stringify(categories));
   }
 };
