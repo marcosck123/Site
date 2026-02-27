@@ -17,7 +17,10 @@ import {
   Calendar,
   Image as ImageIcon,
   Save,
-  Phone
+  Phone,
+  CreditCard,
+  Banknote,
+  QrCode
 } from 'lucide-react';
 import { Product, Order, OrderStatus } from '../types';
 import { LocalDB } from '../services/localDB';
@@ -322,6 +325,7 @@ export default function Admin() {
                     <th className="px-8 py-4">ID / Data</th>
                     <th className="px-8 py-4">Cliente</th>
                     <th className="px-8 py-4">Itens</th>
+                    <th className="px-8 py-4">Pagamento</th>
                     <th className="px-8 py-4">Total</th>
                     <th className="px-8 py-4">Status</th>
                     <th className="px-8 py-4">Ações</th>
@@ -353,6 +357,22 @@ export default function Admin() {
                       </td>
                       <td className="px-8 py-6">
                         <p className="text-sm text-stone-600">{order.items.length} itens</p>
+                      </td>
+                      <td className="px-8 py-6">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2 text-xs font-bold text-stone-500">
+                            {order.paymentMethod === 'pix' && <><QrCode size={14} className="text-brand-primary" /> PIX</>}
+                            {order.paymentMethod === 'credit' && <><CreditCard size={14} className="text-brand-primary" /> Cartão</>}
+                            {order.paymentMethod === 'cash' && <><Banknote size={14} className="text-brand-primary" /> Dinheiro</>}
+                          </div>
+                          {order.paymentMethod === 'cash' && order.changeFor && (
+                            <p className="text-[10px] text-emerald-500 font-black">
+                              Troco p/ R$ {order.changeFor.toFixed(2)}
+                              <br />
+                              (R$ {(order.changeFor - order.total).toFixed(2)})
+                            </p>
+                          )}
+                        </div>
                       </td>
                       <td className="px-8 py-6">
                         <p className="font-black text-brand-primary">R$ {order.total.toFixed(2)}</p>

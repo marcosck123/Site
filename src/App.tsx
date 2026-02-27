@@ -37,6 +37,7 @@ function AppContent() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'credit' | 'pix' | 'cash'>('pix');
+  const [changeFor, setChangeFor] = useState<string>('');
 
   useEffect(() => {
     LocalDB.saveCart(cart);
@@ -103,12 +104,14 @@ function AppContent() {
       createdAt: new Date().toISOString(),
       address: user.address || 'Endereço não informado',
       phone: user.phone || 'Telefone não informado',
-      paymentMethod
+      paymentMethod,
+      changeFor: paymentMethod === 'cash' && changeFor ? parseFloat(changeFor) : undefined
     };
 
     LocalDB.addOrder(newOrder);
     setOrderPlaced(true);
     setCart([]);
+    setChangeFor('');
     setTimeout(() => {
       setOrderPlaced(false);
       setIsCartOpen(false);
@@ -382,6 +385,34 @@ function AppContent() {
                       </button>
                     </div>
                   </div>
+
+                  <AnimatePresence>
+                    {paymentMethod === 'cash' && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="space-y-2 overflow-hidden"
+                      >
+                        <label className="text-xs font-black text-stone-400 uppercase tracking-wider">Troco para quanto?</label>
+                        <div className="relative">
+                          <Banknote className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-300" size={18} />
+                          <input 
+                            type="number" 
+                            placeholder="Ex: 50.00"
+                            value={changeFor}
+                            onChange={(e) => setChangeFor(e.target.value)}
+                            className="w-full bg-white border border-stone-100 rounded-2xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-brand-primary/20 outline-none text-sm"
+                          />
+                        </div>
+                        {changeFor && parseFloat(changeFor) > cartTotal && (
+                          <p className="text-[10px] text-emerald-500 font-bold ml-1">
+                            Troco: R$ {(parseFloat(changeFor) - cartTotal).toFixed(2)}
+                          </p>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   <div className="pt-4 border-t border-stone-200 flex justify-between items-center mb-6">
                     <span className="text-lg font-bold text-stone-900">Total</span>
