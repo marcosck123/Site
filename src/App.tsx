@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   ShoppingBag, 
   Plus, 
   Minus, 
   X, 
+  Ticket,
   ChevronRight,
   LogOut,
   Home as HomeIcon,
@@ -16,7 +17,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Product, CartItem, User } from './types';
+import { Product, CartItem, User, Coupon } from './types';
 import AuthModal from './components/AuthModal';
 import { LocalDB } from './services/localDB';
 import Admin from './pages/Admin';
@@ -38,6 +39,9 @@ function AppContent() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'credit' | 'pix' | 'cash'>('pix');
   const [changeFor, setChangeFor] = useState<string>('');
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [couponError, setCouponError] = useState('');
 
   useEffect(() => {
     LocalDB.saveCart(cart);
@@ -86,7 +90,30 @@ function AppContent() {
   };
 
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const discountAmount = useMemo(() => {
+    if (!appliedCoupon) return 0;
+    if (appliedCoupon.discountType === 'percentage') {
+      return cartTotal * (appliedCoupon.discountValue / 100);
+    }
+    return Math.min(appliedCoupon.discountValue, cartTotal);
+  }, [appliedCoupon, cartTotal]);
+  const finalTotal = Math.max(0, cartTotal - discountAmount);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  const handleApplyCoupon = () => {
+    setCouponError('');
+    const coupon = LocalDB.validateCoupon(couponCode);
+    if (coupon) {
+      setAppliedCoupon(coupon);
+      setCouponCode('');
+    } else {
+      setCouponError('Cupom inválido ou expirado');
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+  };
 
   const handleCheckout = () => {
     if (!user) {
@@ -99,19 +126,21 @@ function AppContent() {
       userId: user.id,
       userName: user.name,
       items: cart,
-      total: cartTotal,
+      total: finalTotal,
       status: 'Pendente' as const,
       createdAt: new Date().toISOString(),
       address: user.address || 'Endereço não informado',
       phone: user.phone || 'Telefone não informado',
       paymentMethod,
-      changeFor: paymentMethod === 'cash' && changeFor ? parseFloat(changeFor) : undefined
+      changeFor: paymentMethod === 'cash' && changeFor ? parseFloat(changeFor) : undefined,
+      couponCode: appliedCoupon?.code
     };
 
     LocalDB.addOrder(newOrder);
     setOrderPlaced(true);
     setCart([]);
     setChangeFor('');
+    setAppliedCoupon(null);
     setTimeout(() => {
       setOrderPlaced(false);
       setIsCartOpen(false);
@@ -359,6 +388,41 @@ function AppContent() {
                     <span className="text-emerald-500 font-bold">Grátis</span>
                   </div>
 
+                  {appliedCoupon && (
+                    <div className="flex justify-between items-center text-emerald-500 text-sm font-bold">
+                      <div className="flex items-center gap-1">
+                        <span>Desconto ({appliedCoupon.code})</span>
+                        <button onClick={handleRemoveCoupon} className="text-stone-300 hover:text-red-500">
+                          <X size={14} />
+                        </button>
+                      </div>
+                      <span>- R$ {discountAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    <label className="text-xs font-black text-stone-400 uppercase tracking-wider">Cupom de Desconto</label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Ticket className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-300" size={18} />
+                        <input 
+                          type="text" 
+                          placeholder="Código do cupom"
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                          className="w-full bg-white border border-stone-100 rounded-2xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-brand-primary/20 outline-none text-sm uppercase"
+                        />
+                      </div>
+                      <button 
+                        onClick={handleApplyCoupon}
+                        className="bg-brand-secondary text-brand-primary px-4 rounded-2xl font-bold hover:bg-brand-primary hover:text-brand-secondary transition-all text-sm"
+                      >
+                        Aplicar
+                      </button>
+                    </div>
+                    {couponError && <p className="text-[10px] text-red-500 font-bold ml-1">{couponError}</p>}
+                  </div>
+
                   <div className="space-y-3">
                     <label className="text-xs font-black text-stone-400 uppercase tracking-wider">Forma de Pagamento</label>
                     <div className="grid grid-cols-3 gap-2">
@@ -416,7 +480,7 @@ function AppContent() {
 
                   <div className="pt-4 border-t border-stone-200 flex justify-between items-center mb-6">
                     <span className="text-lg font-bold text-stone-900">Total</span>
-                    <span className="text-2xl font-black text-brand-primary">R$ {cartTotal.toFixed(2)}</span>
+                    <span className="text-2xl font-black text-brand-primary">R$ {finalTotal.toFixed(2)}</span>
                   </div>
                   
                   <button 

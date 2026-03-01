@@ -1,4 +1,4 @@
-import { Product, User, CartItem, Order, OrderStatus } from '../types';
+import { Product, User, CartItem, Order, OrderStatus, Coupon, Review, Driver, AppSettings } from '../types';
 
 const DB_KEYS = {
   PRODUCTS: 'doce_entrega_products',
@@ -7,10 +7,24 @@ const DB_KEYS = {
   CURRENT_USER: 'doce_entrega_current_user',
   ORDERS: 'doce_entrega_orders',
   CATEGORIES: 'doce_entrega_categories',
+  COUPONS: 'doce_entrega_coupons',
+  REVIEWS: 'doce_entrega_reviews',
+  DRIVERS: 'doce_entrega_drivers',
+  SETTINGS: 'doce_entrega_settings',
 };
 
 // Initial data if empty
 const INITIAL_CATEGORIES = ['Brigadeiros', 'Bolos', 'Tortas', 'Cookies', 'Gelados'];
+const INITIAL_COUPONS: Coupon[] = [
+  {
+    id: '1',
+    code: 'DOCE20',
+    discountType: 'percentage',
+    discountValue: 20,
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    isActive: true
+  }
+];
 const INITIAL_PRODUCTS: Product[] = [
   {
     id: '1',
@@ -164,5 +178,106 @@ export const LocalDB = {
 
   saveCategories: (categories: string[]) => {
     localStorage.setItem(DB_KEYS.CATEGORIES, JSON.stringify(categories));
+  },
+
+  // Coupons
+  getCoupons: (): Coupon[] => {
+    const data = localStorage.getItem(DB_KEYS.COUPONS);
+    if (!data) {
+      localStorage.setItem(DB_KEYS.COUPONS, JSON.stringify(INITIAL_COUPONS));
+      return INITIAL_COUPONS;
+    }
+    const coupons: Coupon[] = JSON.parse(data);
+    // Auto-deactivate expired coupons
+    const now = new Date();
+    let changed = false;
+    const updated = coupons.map(c => {
+      if (c.isActive && new Date(c.expiresAt) < now) {
+        changed = true;
+        return { ...c, isActive: false };
+      }
+      return c;
+    });
+    if (changed) LocalDB.saveCoupons(updated);
+    return updated;
+  },
+
+  saveCoupons: (coupons: Coupon[]) => {
+    localStorage.setItem(DB_KEYS.COUPONS, JSON.stringify(coupons));
+  },
+
+  addCoupon: (coupon: Coupon) => {
+    const coupons = LocalDB.getCoupons();
+    coupons.push(coupon);
+    LocalDB.saveCoupons(coupons);
+  },
+
+  deleteCoupon: (id: string) => {
+    const coupons = LocalDB.getCoupons();
+    const filtered = coupons.filter(c => c.id !== id);
+    LocalDB.saveCoupons(filtered);
+  },
+
+  validateCoupon: (code: string): Coupon | null => {
+    const coupons = LocalDB.getCoupons();
+    const coupon = coupons.find(c => c.code.toUpperCase() === code.toUpperCase() && c.isActive);
+    if (!coupon) return null;
+    if (new Date(coupon.expiresAt) < new Date()) return null;
+    return coupon;
+  },
+
+  // Reviews
+  getReviews: (): Review[] => {
+    const data = localStorage.getItem(DB_KEYS.REVIEWS);
+    return data ? JSON.parse(data) : [];
+  },
+
+  addReview: (review: Review) => {
+    const reviews = LocalDB.getReviews();
+    reviews.push(review);
+    localStorage.setItem(DB_KEYS.REVIEWS, JSON.stringify(reviews));
+  },
+
+  // Drivers
+  getDrivers: (): Driver[] => {
+    const data = localStorage.getItem(DB_KEYS.DRIVERS);
+    return data ? JSON.parse(data) : [];
+  },
+
+  saveDrivers: (drivers: Driver[]) => {
+    localStorage.setItem(DB_KEYS.DRIVERS, JSON.stringify(drivers));
+  },
+
+  // Settings
+  getSettings: (): AppSettings => {
+    const data = localStorage.getItem(DB_KEYS.SETTINGS);
+    return data ? JSON.parse(data) : {
+      darkMode: false,
+      inventoryControl: true,
+      loyaltyProgram: true
+    };
+  },
+
+  saveSettings: (settings: AppSettings) => {
+    localStorage.setItem(DB_KEYS.SETTINGS, JSON.stringify(settings));
+  },
+
+  // Popular Products (Simulated based on orders)
+  getPopularProducts: (limit: number = 4): Product[] => {
+    const orders = LocalDB.getOrders();
+    const productCounts: Record<string, number> = {};
+    
+    orders.forEach(order => {
+      order.items.forEach(item => {
+        productCounts[item.id] = (productCounts[item.id] || 0) + item.quantity;
+      });
+    });
+
+    const products = LocalDB.getProducts();
+    const sorted = products
+      .map(p => ({ ...p, sales: productCounts[p.id] || 0 }))
+      .sort((a, b) => b.sales - a.sales);
+
+    return sorted.slice(0, limit);
   }
 };

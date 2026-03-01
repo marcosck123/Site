@@ -13,7 +13,35 @@
 
 @layer base {
   body {
-    @apply bg-[#F9F5F0] text-[#4A3728];
+    @apply bg-[#F9F5F0] text-[#4A3728] transition-colors duration-300;
+  }
+  
+  .dark body {
+    @apply bg-[#1A1612] text-[#E5D2B7];
+  }
+}
+
+@layer utilities {
+  .skeleton {
+    @apply relative overflow-hidden bg-stone-200 dark:bg-stone-800 rounded-lg;
+  }
+  
+  .skeleton::after {
+    @apply absolute inset-0 -translate-x-full;
+    content: "";
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+    animation: shimmer 1.5s infinite;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
   }
 }
 

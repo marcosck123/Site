@@ -21,10 +21,20 @@ import {
   CreditCard,
   Banknote,
   QrCode,
-  Tag
+  Tag,
+  Ticket,
+  Settings,
+  UserCheck,
+  FileText,
+  Printer,
+  Moon,
+  Sun,
+  Download
 } from 'lucide-react';
-import { Product, Order, OrderStatus } from '../types';
+import { Product, Order, OrderStatus, Coupon, Driver, AppSettings } from '../types';
 import { LocalDB } from '../services/localDB';
+import { exportOrdersToPDF, exportOrdersToExcel } from '../utils/reports';
+import { useTheme } from '../ThemeContext';
 import { 
   BarChart, 
   Bar, 
@@ -40,13 +50,33 @@ import {
 } from 'recharts';
 
 export default function Admin() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products' | 'categories'>('dashboard');
+  const { theme, toggleTheme } = useTheme();
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products' | 'categories' | 'coupons' | 'drivers' | 'settings'>('dashboard');
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [settings, setSettings] = useState<AppSettings>(LocalDB.getSettings());
   const [newCategory, setNewCategory] = useState('');
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
+  const [isDriverModalOpen, setIsDriverModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
+  // Driver Form State
+  const [driverFormData, setDriverFormData] = useState({
+    name: '',
+    phone: ''
+  });
+
+  // Coupon Form State
+  const [couponFormData, setCouponFormData] = useState({
+    code: '',
+    discountType: 'percentage' as 'percentage' | 'fixed',
+    discountValue: '',
+    expiresInDays: '7'
+  });
 
   // Product Form State
   const [formData, setFormData] = useState({
@@ -56,12 +86,16 @@ export default function Admin() {
     promoPrice: '',
     image: '',
     category: '',
-    deliveryTime: '20-30 min'
+    deliveryTime: '20-30 min',
+    stock: ''
   });
 
   useEffect(() => {
     setProducts(LocalDB.getProducts());
     setOrders(LocalDB.getOrders());
+    setCoupons(LocalDB.getCoupons());
+    setDrivers(LocalDB.getDrivers());
+    setSettings(LocalDB.getSettings());
     const cats = LocalDB.getCategories();
     setCategories(cats);
     if (cats.length > 0) {
@@ -140,10 +174,98 @@ export default function Admin() {
     }
   };
 
+  const handleSaveCoupon = (e: React.FormEvent) => {
+    e.preventDefault();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + parseInt(couponFormData.expiresInDays));
+
+    const newCoupon: Coupon = {
+      id: Date.now().toString(),
+      code: couponFormData.code.toUpperCase(),
+      discountType: couponFormData.discountType,
+      discountValue: parseFloat(couponFormData.discountValue),
+      expiresAt: expiresAt.toISOString(),
+      isActive: true
+    };
+
+    LocalDB.addCoupon(newCoupon);
+    setCoupons(LocalDB.getCoupons());
+    setIsCouponModalOpen(false);
+    setCouponFormData({
+      code: '',
+      discountType: 'percentage',
+      discountValue: '',
+      expiresInDays: '7'
+    });
+  };
+
+  const handleDeleteCoupon = (id: string) => {
+    if (confirm('Tem certeza que deseja excluir este cupom?')) {
+      LocalDB.deleteCoupon(id);
+      setCoupons(LocalDB.getCoupons());
+    }
+  };
+
   const handleDeleteProduct = (id: string) => {
     if (confirm('Tem certeza que deseja excluir este produto?')) {
       LocalDB.deleteProduct(id);
       setProducts(LocalDB.getProducts());
+    }
+  };
+
+  const handleSaveDriver = (e: React.FormEvent) => {
+    e.preventDefault();
+    const newDriver: Driver = {
+      id: Date.now().toString(),
+      name: driverFormData.name,
+      phone: driverFormData.phone,
+      isActive: true
+    };
+    const updated = [...drivers, newDriver];
+    setDrivers(updated);
+    LocalDB.saveDrivers(updated);
+    setIsDriverModalOpen(false);
+    setDriverFormData({ name: '', phone: '' });
+  };
+
+  const handleDeleteDriver = (id: string) => {
+    if (confirm('Excluir este entregador?')) {
+      const updated = drivers.filter(d => d.id !== id);
+      setDrivers(updated);
+      LocalDB.saveDrivers(updated);
+    }
+  };
+
+  const handleAssignDriver = (orderId: string, driverId: string) => {
+    const updatedOrders = orders.map(o => o.id === orderId ? { ...o, driverId } : o);
+    setOrders(updatedOrders);
+    LocalDB.saveOrders(updatedOrders);
+  };
+
+  const handlePrintOrder = (order: Order) => {
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head><title>Pedido #${order.id.slice(-6)}</title></head>
+          <body style="font-family: sans-serif; padding: 20px;">
+            <h1>Doce Entrega - Pedido #${order.id.slice(-6)}</h1>
+            <p><strong>Cliente:</strong> ${order.userName}</p>
+            <p><strong>Telefone:</strong> ${order.phone}</p>
+            <p><strong>Endereço:</strong> ${order.address}</p>
+            <hr/>
+            <h3>Itens:</h3>
+            <ul>
+              ${order.items.map(item => `<li>${item.quantity}x ${item.name} - R$ ${(item.price * item.quantity).toFixed(2)}</li>`).join('')}
+            </ul>
+            <hr/>
+            <p><strong>Pagamento:</strong> ${order.paymentMethod}</p>
+            <h2>Total: R$ ${order.total.toFixed(2)}</h2>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
     }
   };
 
@@ -223,7 +345,35 @@ export default function Admin() {
           >
             <Tag size={20} /> Categorias
           </button>
+          <button 
+            onClick={() => setActiveTab('coupons')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'coupons' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
+          >
+            <Ticket size={20} /> Cupons
+          </button>
+          <button 
+            onClick={() => setActiveTab('drivers')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'drivers' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
+          >
+            <Truck size={20} /> Entregadores
+          </button>
+          <button 
+            onClick={() => setActiveTab('settings')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'settings' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
+          >
+            <Settings size={20} /> Configurações
+          </button>
         </nav>
+
+        <div className="mt-auto pt-6 border-t border-white/10">
+          <button 
+            onClick={toggleTheme}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all hover:bg-white/10 w-full"
+          >
+            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            {theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
+          </button>
+        </div>
       </aside>
 
       {/* Mobile Header */}
@@ -258,6 +408,18 @@ export default function Admin() {
             className={`p-2 rounded-lg transition-all ${activeTab === 'categories' ? 'bg-brand-secondary text-brand-primary' : 'text-brand-secondary/60'}`}
           >
             <Tag size={20} />
+          </button>
+          <button 
+            onClick={() => setActiveTab('coupons')}
+            className={`p-2 rounded-lg transition-all ${activeTab === 'coupons' ? 'bg-brand-secondary text-brand-primary' : 'text-brand-secondary/60'}`}
+          >
+            <Ticket size={20} />
+          </button>
+          <button 
+            onClick={() => setActiveTab('settings')}
+            className={`p-2 rounded-lg transition-all ${activeTab === 'settings' ? 'bg-brand-secondary text-brand-primary' : 'text-brand-secondary/60'}`}
+          >
+            <Settings size={20} />
           </button>
         </nav>
       </header>
@@ -357,6 +519,20 @@ export default function Admin() {
                 <h1 className="text-3xl font-black text-stone-900">Pedidos</h1>
                 <p className="text-stone-500">Gerencie as solicitações dos clientes</p>
               </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => exportOrdersToPDF(orders)}
+                  className="bg-white border border-stone-100 text-stone-600 px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-stone-50 transition-all text-sm"
+                >
+                  <Download size={16} /> PDF
+                </button>
+                <button 
+                  onClick={() => exportOrdersToExcel(orders)}
+                  className="bg-white border border-stone-100 text-stone-600 px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-stone-50 transition-all text-sm"
+                >
+                  <Download size={16} /> Excel
+                </button>
+              </div>
             </header>
 
             <div className="bg-white rounded-[40px] shadow-sm border border-stone-100 overflow-x-auto">
@@ -413,6 +589,11 @@ export default function Admin() {
                               (R$ {(order.changeFor - order.total).toFixed(2)})
                             </p>
                           )}
+                          {order.couponCode && (
+                            <div className="flex items-center gap-1 text-[10px] text-brand-primary font-black mt-1">
+                              <Ticket size={10} /> {order.couponCode}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-8 py-6">
@@ -431,6 +612,13 @@ export default function Admin() {
                       </td>
                       <td className="px-8 py-6">
                         <div className="flex gap-2">
+                          <button 
+                            onClick={() => handlePrintOrder(order)}
+                            className="p-2 bg-stone-100 text-stone-600 rounded-xl hover:bg-stone-200 transition-all"
+                            title="Imprimir Pedido"
+                          >
+                            <Printer size={18} />
+                          </button>
                           {order.status === 'Pendente' && (
                             <>
                               <button 
@@ -450,13 +638,25 @@ export default function Admin() {
                             </>
                           )}
                           {order.status === 'Aceito' && (
-                            <button 
-                              onClick={() => handleUpdateOrderStatus(order.id, 'Em Trânsito')}
-                              className="p-2 bg-blue-50 text-blue-500 rounded-xl hover:bg-blue-500 hover:text-white transition-all"
-                              title="Enviar Pedido"
-                            >
-                              <Truck size={18} />
-                            </button>
+                            <div className="flex gap-2">
+                              <select 
+                                value={order.driverId || ''}
+                                onChange={(e) => handleAssignDriver(order.id, e.target.value)}
+                                className="bg-stone-50 border border-stone-100 rounded-xl px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-brand-primary/20"
+                              >
+                                <option value="">Atribuir Entregador</option>
+                                {drivers.map(d => (
+                                  <option key={d.id} value={d.id}>{d.name}</option>
+                                ))}
+                              </select>
+                              <button 
+                                onClick={() => handleUpdateOrderStatus(order.id, 'Em Trânsito')}
+                                className="p-2 bg-blue-50 text-blue-500 rounded-xl hover:bg-blue-500 hover:text-white transition-all"
+                                title="Enviar Pedido"
+                              >
+                                <Truck size={18} />
+                              </button>
+                            </div>
                           )}
                           {order.status === 'Em Trânsito' && (
                             <button 
@@ -586,7 +786,325 @@ export default function Admin() {
             </div>
           </div>
         )}
+
+        {activeTab === 'coupons' && (
+          <div className="space-y-8">
+            <header className="flex justify-between items-center">
+              <div>
+                <h1 className="text-3xl font-black text-stone-900">Cupons</h1>
+                <p className="text-stone-500">Gerencie seus cupons de desconto</p>
+              </div>
+              <button 
+                onClick={() => setIsCouponModalOpen(true)}
+                className="bg-brand-primary text-brand-secondary px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-brand-primary/20 hover:scale-105 transition-all"
+              >
+                <Plus size={20} /> Novo Cupom
+              </button>
+            </header>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {coupons.map((coupon) => (
+                <div key={coupon.id} className={`bg-white p-6 rounded-[32px] shadow-sm border border-stone-100 relative group overflow-hidden ${!coupon.isActive ? 'opacity-60' : ''}`}>
+                  {!coupon.isActive && (
+                    <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl">INATIVO</div>
+                  )}
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="w-12 h-12 bg-brand-secondary text-brand-primary rounded-2xl flex items-center justify-center">
+                      <Ticket size={24} />
+                    </div>
+                    <button 
+                      onClick={() => handleDeleteCoupon(coupon.id)}
+                      className="p-2 text-stone-300 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                  <h3 className="text-xl font-black text-stone-900 mb-1">{coupon.code}</h3>
+                  <p className="text-sm text-stone-500 font-bold mb-4">
+                    {coupon.discountType === 'percentage' ? `${coupon.discountValue}% OFF` : `R$ ${coupon.discountValue.toFixed(2)} OFF`}
+                  </p>
+                  <div className="flex items-center gap-2 text-xs text-stone-400">
+                    <Calendar size={14} />
+                    Expira em: {new Date(coupon.expiresAt).toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'drivers' && (
+          <div className="space-y-8">
+            <header className="flex justify-between items-center">
+              <div>
+                <h1 className="text-3xl font-black text-stone-900">Entregadores</h1>
+                <p className="text-stone-500">Gerencie sua equipe de entrega</p>
+              </div>
+              <button 
+                onClick={() => setIsDriverModalOpen(true)}
+                className="bg-brand-primary text-brand-secondary px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-brand-primary/20 hover:scale-105 transition-all"
+              >
+                <Plus size={20} /> Novo Entregador
+              </button>
+            </header>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {drivers.map((driver) => (
+                <div key={driver.id} className="bg-white p-6 rounded-[32px] shadow-sm border border-stone-100 group">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center">
+                      <Truck size={24} />
+                    </div>
+                    <button 
+                      onClick={() => handleDeleteDriver(driver.id)}
+                      className="p-2 text-stone-300 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                  <h3 className="text-xl font-black text-stone-900 mb-1">{driver.name}</h3>
+                  <p className="text-sm text-stone-500 font-bold mb-4">{driver.phone}</p>
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${driver.isActive ? 'bg-emerald-500' : 'bg-stone-300'}`} />
+                    <span className="text-xs font-bold text-stone-400">{driver.isActive ? 'Disponível' : 'Indisponível'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <div className="space-y-8">
+            <header>
+              <h1 className="text-3xl font-black text-stone-900">Configurações</h1>
+              <p className="text-stone-500">Personalize o funcionamento do seu app</p>
+            </header>
+
+            <div className="max-w-2xl space-y-4">
+              <div className="bg-white p-6 rounded-[32px] shadow-sm border border-stone-100 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-stone-50 text-stone-500 rounded-2xl flex items-center justify-center">
+                    <Package size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-stone-900">Controle de Estoque</h4>
+                    <p className="text-sm text-stone-500">Diminuir estoque automaticamente nas vendas</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    const newSettings = { ...settings, inventoryControl: !settings.inventoryControl };
+                    setSettings(newSettings);
+                    LocalDB.saveSettings(newSettings);
+                  }}
+                  className={`w-14 h-8 rounded-full transition-all relative ${settings.inventoryControl ? 'bg-emerald-500' : 'bg-stone-200'}`}
+                >
+                  <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${settings.inventoryControl ? 'right-1' : 'left-1'}`} />
+                </button>
+              </div>
+
+              <div className="bg-white p-6 rounded-[32px] shadow-sm border border-stone-100 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-stone-50 text-stone-500 rounded-2xl flex items-center justify-center">
+                    <Users size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-stone-900">Programa de Fidelidade</h4>
+                    <p className="text-sm text-stone-500">Habilitar acúmulo de pontos por compra</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    const newSettings = { ...settings, loyaltyProgram: !settings.loyaltyProgram };
+                    setSettings(newSettings);
+                    LocalDB.saveSettings(newSettings);
+                  }}
+                  className={`w-14 h-8 rounded-full transition-all relative ${settings.loyaltyProgram ? 'bg-emerald-500' : 'bg-stone-200'}`}
+                >
+                  <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${settings.loyaltyProgram ? 'right-1' : 'left-1'}`} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
+
+      {/* Driver Modal */}
+      <AnimatePresence>
+        {isDriverModalOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsDriverModalOpen(false)}
+              className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-[80]"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed left-0 right-0 bottom-0 md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 w-full md:max-w-lg bg-white rounded-t-[40px] md:rounded-[40px] shadow-2xl z-[90] overflow-hidden"
+            >
+              <form onSubmit={handleSaveDriver} className="p-6 md:p-10 space-y-6">
+                <header className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-black text-stone-900">Novo Entregador</h2>
+                  <button 
+                    type="button"
+                    onClick={() => setIsDriverModalOpen(false)}
+                    className="p-2 hover:bg-stone-100 rounded-full text-stone-400 transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </header>
+
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Nome</label>
+                    <input 
+                      type="text" 
+                      placeholder="Nome do entregador"
+                      value={driverFormData.name}
+                      onChange={e => setDriverFormData({...driverFormData, name: e.target.value})}
+                      className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none font-bold"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Telefone</label>
+                    <input 
+                      type="text" 
+                      placeholder="(00) 00000-0000"
+                      value={driverFormData.phone}
+                      onChange={e => setDriverFormData({...driverFormData, phone: e.target.value})}
+                      className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none font-bold"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button 
+                    type="button"
+                    onClick={() => setIsDriverModalOpen(false)}
+                    className="flex-1 py-4 rounded-2xl font-bold text-stone-500 hover:bg-stone-50 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    type="submit"
+                    className="flex-1 bg-brand-primary text-brand-secondary py-4 rounded-2xl font-bold shadow-lg shadow-brand-primary/20 hover:scale-105 transition-all"
+                  >
+                    Salvar
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Coupon Modal */}
+      <AnimatePresence>
+        {isCouponModalOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsCouponModalOpen(false)}
+              className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-[80]"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed left-0 right-0 bottom-0 md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 w-full md:max-w-lg bg-white rounded-t-[40px] md:rounded-[40px] shadow-2xl z-[90] overflow-hidden"
+            >
+              <form onSubmit={handleSaveCoupon} className="p-6 md:p-10 space-y-6">
+                <header className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-black text-stone-900">Novo Cupom</h2>
+                  <button 
+                    type="button"
+                    onClick={() => setIsCouponModalOpen(false)}
+                    className="p-2 hover:bg-stone-100 rounded-full text-stone-400 transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </header>
+
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Código do Cupom</label>
+                    <input 
+                      type="text" 
+                      placeholder="Ex: DOCE20"
+                      value={couponFormData.code}
+                      onChange={e => setCouponFormData({...couponFormData, code: e.target.value})}
+                      className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none font-bold uppercase"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Tipo</label>
+                      <select 
+                        value={couponFormData.discountType}
+                        onChange={e => setCouponFormData({...couponFormData, discountType: e.target.value as 'percentage' | 'fixed'})}
+                        className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none"
+                      >
+                        <option value="percentage">Porcentagem (%)</option>
+                        <option value="fixed">Valor Fixo (R$)</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Valor</label>
+                      <input 
+                        type="number" 
+                        placeholder="Ex: 20"
+                        value={couponFormData.discountValue}
+                        onChange={e => setCouponFormData({...couponFormData, discountValue: e.target.value})}
+                        className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Duração (dias)</label>
+                    <input 
+                      type="number" 
+                      placeholder="Ex: 7"
+                      value={couponFormData.expiresInDays}
+                      onChange={e => setCouponFormData({...couponFormData, expiresInDays: e.target.value})}
+                      className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button 
+                    type="button"
+                    onClick={() => setIsCouponModalOpen(false)}
+                    className="flex-1 py-4 rounded-2xl font-bold text-stone-500 hover:bg-stone-50 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    type="submit"
+                    className="flex-1 bg-brand-primary text-brand-secondary py-4 rounded-2xl font-bold shadow-lg shadow-brand-primary/20 hover:scale-105 transition-all"
+                  >
+                    Criar Cupom
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Product Modal */}
       <AnimatePresence>
@@ -686,6 +1204,17 @@ export default function Admin() {
                         className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none"
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Estoque (Opcional)</label>
+                    <input 
+                      type="number" 
+                      placeholder="Ex: 50"
+                      value={formData.stock}
+                      onChange={e => setFormData({...formData, stock: e.target.value})}
+                      className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none"
+                    />
                   </div>
 
                   <div className="space-y-1">
