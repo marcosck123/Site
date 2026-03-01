@@ -5,6 +5,7 @@ import {
   ShoppingBag, 
   Package, 
   Plus, 
+  Minus,
   Edit2, 
   Trash2, 
   Check, 
@@ -29,9 +30,10 @@ import {
   Printer,
   Moon,
   Sun,
-  Download
+  Download,
+  Star
 } from 'lucide-react';
-import { Product, Order, OrderStatus, Coupon, Driver, AppSettings } from '../types';
+import { Product, Order, OrderStatus, Coupon, Driver, AppSettings, Ingredient } from '../types';
 import { LocalDB } from '../services/localDB';
 import { exportOrdersToPDF, exportOrdersToExcel } from '../utils/reports';
 import { useTheme } from '../ThemeContext';
@@ -51,18 +53,22 @@ import {
 
 export default function Admin() {
   const { theme, toggleTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products' | 'categories' | 'coupons' | 'drivers' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products' | 'categories' | 'coupons' | 'drivers' | 'settings' | 'users' | 'inventory'>('dashboard');
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [settings, setSettings] = useState<AppSettings>(LocalDB.getSettings());
   const [newCategory, setNewCategory] = useState('');
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
   const [isDriverModalOpen, setIsDriverModalOpen] = useState(false);
+  const [isIngredientModalOpen, setIsIngredientModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
 
   // Driver Form State
   const [driverFormData, setDriverFormData] = useState({
@@ -78,23 +84,41 @@ export default function Admin() {
     expiresInDays: '7'
   });
 
+  // Ingredient Form State
+  const [ingredientFormData, setIngredientFormData] = useState({
+    name: '',
+    unit: 'kg',
+    stock: '',
+    minStock: '',
+    costPrice: '',
+    image: ''
+  });
+
   // Product Form State
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     price: '',
     promoPrice: '',
+    costPrice: '',
     image: '',
     category: '',
     deliveryTime: '20-30 min',
-    stock: ''
+    stock: '',
+    isCombo: false,
+    comboItems: [] as string[],
+    flashSalePrice: '',
+    flashSaleEnd: '',
+    tags: ''
   });
 
   useEffect(() => {
     setProducts(LocalDB.getProducts());
     setOrders(LocalDB.getOrders());
+    setUsers(LocalDB.getUsers());
     setCoupons(LocalDB.getCoupons());
     setDrivers(LocalDB.getDrivers());
+    setIngredients(LocalDB.getIngredients());
     setSettings(LocalDB.getSettings());
     const cats = LocalDB.getCategories();
     setCategories(cats);
@@ -127,10 +151,17 @@ export default function Admin() {
       description: formData.description,
       price: parseFloat(formData.price),
       promoPrice: formData.promoPrice ? parseFloat(formData.promoPrice) : undefined,
+      costPrice: formData.costPrice ? parseFloat(formData.costPrice) : undefined,
       image: formData.image || 'https://picsum.photos/seed/new/400/400',
       category: formData.category,
       rating: editingProduct?.rating || 5.0,
-      deliveryTime: formData.deliveryTime
+      deliveryTime: formData.deliveryTime,
+      stock: formData.stock ? parseInt(formData.stock) : undefined,
+      isCombo: formData.isCombo,
+      comboItems: formData.comboItems,
+      flashSalePrice: formData.flashSalePrice ? parseFloat(formData.flashSalePrice) : undefined,
+      flashSaleEnd: formData.flashSaleEnd || undefined,
+      tags: formData.tags.split(',').map(t => t.trim()).filter(t => t !== '')
     };
 
     if (editingProduct) {
@@ -151,6 +182,66 @@ export default function Admin() {
       category: categories[0] || 'Geral',
       deliveryTime: '20-30 min'
     });
+  };
+
+  const handleUpdateStock = (productId: string, newStock: number) => {
+    const updatedProducts = products.map(p => 
+      p.id === productId ? { ...p, stock: newStock } : p
+    );
+    setProducts(updatedProducts);
+    LocalDB.saveProducts(updatedProducts);
+  };
+
+  const handleUpdateUserPoints = (userId: string, newPoints: number) => {
+    const updatedUsers = users.map(u => 
+      u.id === userId ? { ...u, points: newPoints } : u
+    );
+    setUsers(updatedUsers);
+    LocalDB.updateUserPoints(userId, newPoints);
+  };
+
+  const handleUpdateIngredientStock = (id: string, newStock: number) => {
+    const updated = ingredients.map(i => i.id === id ? { ...i, stock: newStock } : i);
+    setIngredients(updated);
+    LocalDB.saveIngredients(updated);
+  };
+
+  const handleSaveIngredient = (e: React.FormEvent) => {
+    e.preventDefault();
+    const ingredient: Ingredient = {
+      id: editingIngredient?.id || Date.now().toString(),
+      name: ingredientFormData.name,
+      unit: ingredientFormData.unit,
+      stock: parseFloat(ingredientFormData.stock),
+      minStock: parseFloat(ingredientFormData.minStock),
+      costPrice: parseFloat(ingredientFormData.costPrice),
+      image: ingredientFormData.image || 'https://picsum.photos/seed/ing/400/400'
+    };
+
+    if (editingIngredient) {
+      LocalDB.updateIngredient(ingredient);
+    } else {
+      LocalDB.addIngredient(ingredient);
+    }
+
+    setIngredients(LocalDB.getIngredients());
+    setIsIngredientModalOpen(false);
+    setEditingIngredient(null);
+    setIngredientFormData({
+      name: '',
+      unit: 'kg',
+      stock: '',
+      minStock: '',
+      costPrice: '',
+      image: ''
+    });
+  };
+
+  const handleDeleteIngredient = (id: string) => {
+    if (confirm('Excluir este ingrediente?')) {
+      LocalDB.deleteIngredient(id);
+      setIngredients(LocalDB.getIngredients());
+    }
   };
 
   const handleAddCategory = (e: React.FormEvent) => {
@@ -276,9 +367,16 @@ export default function Admin() {
       description: product.description,
       price: product.price.toString(),
       promoPrice: product.promoPrice?.toString() || '',
+      costPrice: product.costPrice?.toString() || '',
       image: product.image,
       category: product.category,
-      deliveryTime: product.deliveryTime
+      deliveryTime: product.deliveryTime,
+      stock: product.stock?.toString() || '',
+      isCombo: product.isCombo || false,
+      comboItems: product.comboItems || [],
+      flashSalePrice: product.flashSalePrice?.toString() || '',
+      flashSaleEnd: product.flashSaleEnd || '',
+      tags: product.tags?.join(', ') || ''
     });
     setIsProductModalOpen(true);
   };
@@ -340,6 +438,12 @@ export default function Admin() {
             <Package size={20} /> Produtos
           </button>
           <button 
+            onClick={() => setActiveTab('inventory')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'inventory' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
+          >
+            <Package size={20} className="text-orange-400" /> Estoque
+          </button>
+          <button 
             onClick={() => setActiveTab('categories')}
             className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'categories' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
           >
@@ -356,6 +460,12 @@ export default function Admin() {
             className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'drivers' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
           >
             <Truck size={20} /> Entregadores
+          </button>
+          <button 
+            onClick={() => setActiveTab('users')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'users' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
+          >
+            <Users size={20} /> Usuários
           </button>
           <button 
             onClick={() => setActiveTab('settings')}
@@ -404,6 +514,12 @@ export default function Admin() {
             <Package size={20} />
           </button>
           <button 
+            onClick={() => setActiveTab('inventory')}
+            className={`p-2 rounded-lg transition-all ${activeTab === 'inventory' ? 'bg-brand-secondary text-brand-primary' : 'text-brand-secondary/60'}`}
+          >
+            <Package size={20} className="text-orange-400" />
+          </button>
+          <button 
             onClick={() => setActiveTab('categories')}
             className={`p-2 rounded-lg transition-all ${activeTab === 'categories' ? 'bg-brand-secondary text-brand-primary' : 'text-brand-secondary/60'}`}
           >
@@ -414,6 +530,12 @@ export default function Admin() {
             className={`p-2 rounded-lg transition-all ${activeTab === 'coupons' ? 'bg-brand-secondary text-brand-primary' : 'text-brand-secondary/60'}`}
           >
             <Ticket size={20} />
+          </button>
+          <button 
+            onClick={() => setActiveTab('users')}
+            className={`p-2 rounded-lg transition-all ${activeTab === 'users' ? 'bg-brand-secondary text-brand-primary' : 'text-brand-secondary/60'}`}
+          >
+            <Users size={20} />
           </button>
           <button 
             onClick={() => setActiveTab('settings')}
@@ -433,14 +555,14 @@ export default function Admin() {
               <p className="text-stone-500">Visão geral do seu negócio</p>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
               <div className="bg-white p-6 rounded-3xl shadow-sm border border-stone-100 flex items-center gap-4">
                 <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center">
                   <DollarSign size={24} />
                 </div>
                 <div>
-                  <p className="text-sm text-stone-500 font-bold">RECEITA TOTAL</p>
-                  <p className="text-2xl font-black text-stone-900">R$ {LocalDB.getStats().totalRevenue.toFixed(2)}</p>
+                  <p className="text-[10px] text-stone-500 font-bold uppercase">Receita</p>
+                  <p className="text-xl font-black text-stone-900">R$ {LocalDB.getStats().totalRevenue.toFixed(2)}</p>
                 </div>
               </div>
               <div className="bg-white p-6 rounded-3xl shadow-sm border border-stone-100 flex items-center gap-4">
@@ -448,17 +570,100 @@ export default function Admin() {
                   <ShoppingBag size={24} />
                 </div>
                 <div>
-                  <p className="text-sm text-stone-500 font-bold">PEDIDOS ENTREGUES</p>
-                  <p className="text-2xl font-black text-stone-900">{LocalDB.getStats().orderCount}</p>
+                  <p className="text-[10px] text-stone-500 font-bold uppercase">Pedidos</p>
+                  <p className="text-xl font-black text-stone-900">{LocalDB.getStats().orderCount}</p>
+                </div>
+              </div>
+              <div className="bg-white p-6 rounded-3xl shadow-sm border border-stone-100 flex items-center gap-4">
+                <div className="w-12 h-12 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center">
+                  <Package size={24} />
+                </div>
+                <div>
+                  <p className="text-[10px] text-stone-500 font-bold uppercase">Estoque Baixo</p>
+                  <p className="text-xl font-black text-stone-900">{products.filter(p => p.stock !== undefined && p.stock < 10).length}</p>
                 </div>
               </div>
               <div className="bg-white p-6 rounded-3xl shadow-sm border border-stone-100 flex items-center gap-4">
                 <div className="w-12 h-12 bg-purple-50 text-purple-500 rounded-2xl flex items-center justify-center">
-                  <TrendingUp size={24} />
+                  <Star size={24} />
                 </div>
                 <div>
-                  <p className="text-sm text-stone-500 font-bold">CRESCIMENTO</p>
-                  <p className="text-2xl font-black text-stone-900">+12.5%</p>
+                  <p className="text-[10px] text-stone-500 font-bold uppercase">Total Pontos</p>
+                  <p className="text-xl font-black text-stone-900">{LocalDB.getStats().totalLoyaltyPoints}</p>
+                </div>
+              </div>
+              <div className="bg-white p-6 rounded-3xl shadow-sm border border-stone-100 flex items-center gap-4">
+                <div className="w-12 h-12 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center">
+                  <Package size={24} />
+                </div>
+                <div>
+                  <p className="text-[10px] text-stone-500 font-bold uppercase">Estoque Total</p>
+                  <p className="text-xl font-black text-stone-900">{LocalDB.getStats().totalInventoryStock}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="bg-white p-8 rounded-[40px] shadow-sm border border-stone-100">
+                <h3 className="text-xl font-bold text-stone-900 mb-6 flex items-center gap-2">
+                  <Package size={20} className="text-red-500" /> Alerta de Estoque Baixo
+                </h3>
+                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                  {products.filter(p => p.stock !== undefined && p.stock < 10).length > 0 ? (
+                    products.filter(p => p.stock !== undefined && p.stock < 10).map(product => (
+                      <div key={product.id} className="flex items-center justify-between p-4 bg-red-50 rounded-2xl border border-red-100">
+                        <div className="flex items-center gap-3">
+                          <img src={product.image} alt={product.name} className="w-10 h-10 rounded-lg object-cover" />
+                          <div>
+                            <p className="text-sm font-bold text-stone-900">{product.name}</p>
+                            <p className="text-[10px] text-stone-500 uppercase font-black">{product.category}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-black text-red-500">{product.stock}</p>
+                          <p className="text-[10px] text-red-400 font-bold uppercase">Restantes</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-12">
+                      <CheckCircle className="mx-auto text-emerald-500 mb-2" size={32} />
+                      <p className="text-stone-500 text-sm">Tudo certo com o estoque!</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-white p-8 rounded-[40px] shadow-sm border border-stone-100">
+                <h3 className="text-xl font-bold text-stone-900 mb-6 flex items-center gap-2">
+                  <DollarSign size={20} className="text-emerald-500" /> Resumo Financeiro
+                </h3>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
+                      <p className="text-[10px] font-black text-stone-400 uppercase mb-1">Receita Bruta</p>
+                      <p className="text-xl font-black text-stone-900">R$ {LocalDB.getStats().totalRevenue.toFixed(2)}</p>
+                    </div>
+                    <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
+                      <p className="text-[10px] font-black text-stone-400 uppercase mb-1">Custo Estimado</p>
+                      <p className="text-xl font-black text-stone-900">
+                        R$ {products.reduce((sum, p) => sum + (p.costPrice || 0) * (LocalDB.getOrders().filter(o => o.status === 'Entregue').reduce((count, o) => count + o.items.filter(i => i.id === p.id).reduce((q, item) => q + item.quantity, 0), 0)), 0).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="p-6 bg-emerald-50 rounded-3xl border border-emerald-100">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-xs font-black text-emerald-600 uppercase mb-1">Lucro Estimado</p>
+                        <p className="text-3xl font-black text-emerald-700">
+                          R$ {(LocalDB.getStats().totalRevenue - products.reduce((sum, p) => sum + (p.costPrice || 0) * (LocalDB.getOrders().filter(o => o.status === 'Entregue').reduce((count, o) => count + o.items.filter(i => i.id === p.id).reduce((q, item) => q + item.quantity, 0), 0)), 0)).toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-emerald-500 shadow-sm">
+                        <TrendingUp size={32} />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -746,6 +951,136 @@ export default function Admin() {
           </div>
         )}
 
+        {activeTab === 'inventory' && (
+          <div className="space-y-8">
+            <header className="flex justify-between items-center">
+              <div>
+                <h1 className="text-3xl font-black text-stone-900">Estoque de Ingredientes</h1>
+                <p className="text-stone-500">Gerencie a matéria-prima para sua produção</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="bg-white px-6 py-3 rounded-2xl border border-stone-100 shadow-sm flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-[10px] text-stone-400 font-black uppercase">Itens Totais</p>
+                    <p className="text-xl font-black text-brand-primary">
+                      {ingredients.reduce((sum, i) => sum + (i.stock || 0), 0).toFixed(1)}
+                    </p>
+                  </div>
+                  <div className="w-px h-8 bg-stone-100" />
+                  <div className="text-right">
+                    <p className="text-[10px] text-stone-400 font-black uppercase">Custo Total</p>
+                    <p className="text-xl font-black text-emerald-500">
+                      R$ {ingredients.reduce((sum, i) => sum + ((i.stock || 0) * (i.costPrice || 0)), 0).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    setEditingIngredient(null);
+                    setIngredientFormData({
+                      name: '',
+                      unit: 'kg',
+                      stock: '',
+                      minStock: '',
+                      costPrice: '',
+                      image: ''
+                    });
+                    setIsIngredientModalOpen(true);
+                  }}
+                  className="bg-brand-primary text-brand-secondary px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-brand-primary/20 hover:scale-105 transition-all"
+                >
+                  <Plus size={20} /> Novo Ingrediente
+                </button>
+              </div>
+            </header>
+
+            <div className="bg-white rounded-[40px] shadow-sm border border-stone-100 overflow-hidden">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-bottom border-stone-100">
+                    <th className="px-8 py-6 text-xs font-black text-stone-400 uppercase tracking-wider">Ingrediente</th>
+                    <th className="px-8 py-6 text-xs font-black text-stone-400 uppercase tracking-wider">Unidade</th>
+                    <th className="px-8 py-6 text-xs font-black text-stone-400 uppercase tracking-wider">Estoque Atual</th>
+                    <th className="px-8 py-6 text-xs font-black text-stone-400 uppercase tracking-wider">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-50">
+                  {ingredients.map((ing) => (
+                    <tr key={ing.id} className="hover:bg-stone-50 transition-colors">
+                      <td className="px-8 py-6">
+                        <div className="flex items-center gap-4">
+                          <img src={ing.image} alt={ing.name} className="w-12 h-12 rounded-xl object-cover" />
+                          <div>
+                            <p className="font-bold text-stone-900">{ing.name}</p>
+                            <p className="text-[10px] text-stone-400 font-black uppercase">Custo: R$ {ing.costPrice.toFixed(2)}/{ing.unit}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-8 py-6">
+                        <span className="text-xs font-black text-stone-500 uppercase bg-stone-100 px-2 py-1 rounded-lg">{ing.unit}</span>
+                      </td>
+                      <td className="px-8 py-6">
+                        <div className="flex items-center gap-3">
+                          <button 
+                            onClick={() => handleUpdateIngredientStock(ing.id, Math.max(0, (ing.stock || 0) - 1))}
+                            className="p-2 bg-stone-100 text-stone-600 rounded-xl hover:bg-stone-200 transition-all"
+                          >
+                            <Minus size={16} />
+                          </button>
+                          <div className={`inline-flex items-center justify-center w-20 px-3 py-2 rounded-xl font-black text-sm ${
+                            (ing.stock || 0) <= (ing.minStock || 0) ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-500'
+                          }`}>
+                            <input 
+                              type="number" 
+                              step="0.1"
+                              value={ing.stock || 0}
+                              onChange={(e) => handleUpdateIngredientStock(ing.id, parseFloat(e.target.value) || 0)}
+                              className="w-full bg-transparent text-center outline-none"
+                            />
+                          </div>
+                          <button 
+                            onClick={() => handleUpdateIngredientStock(ing.id, (ing.stock || 0) + 1)}
+                            className="p-2 bg-brand-primary/10 text-brand-primary rounded-xl hover:bg-brand-primary hover:text-white transition-all"
+                          >
+                            <Plus size={16} />
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-8 py-6">
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => {
+                              setEditingIngredient(ing);
+                              setIngredientFormData({
+                                name: ing.name,
+                                unit: ing.unit,
+                                stock: ing.stock.toString(),
+                                minStock: ing.minStock.toString(),
+                                costPrice: ing.costPrice.toString(),
+                                image: ing.image || ''
+                              });
+                              setIsIngredientModalOpen(true);
+                            }}
+                            className="p-2 bg-stone-100 text-stone-600 rounded-xl hover:bg-brand-primary hover:text-white transition-all"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteIngredient(ing.id)}
+                            className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'categories' && (
           <div className="space-y-8">
             <header>
@@ -874,6 +1209,87 @@ export default function Admin() {
           </div>
         )}
 
+        {activeTab === 'users' && (
+          <div className="space-y-8">
+            <header>
+              <h1 className="text-3xl font-black text-stone-900">Usuários</h1>
+              <p className="text-stone-500">Gerencie seus clientes e pontos de fidelidade</p>
+            </header>
+
+            <div className="bg-white rounded-[40px] shadow-sm border border-stone-100 overflow-hidden">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-bottom border-stone-100">
+                    <th className="px-8 py-6 text-xs font-black text-stone-400 uppercase tracking-wider">Cliente</th>
+                    <th className="px-8 py-6 text-xs font-black text-stone-400 uppercase tracking-wider">E-mail / Telefone</th>
+                    <th className="px-8 py-6 text-xs font-black text-stone-400 uppercase tracking-wider">Pontos</th>
+                    <th className="px-8 py-6 text-xs font-black text-stone-400 uppercase tracking-wider">Nível</th>
+                    <th className="px-8 py-6 text-xs font-black text-stone-400 uppercase tracking-wider">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-50">
+                  {users.map((user) => (
+                    <tr key={user.id} className="hover:bg-stone-50 transition-colors">
+                      <td className="px-8 py-6">
+                        <div className="flex items-center gap-4">
+                          <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-xl object-cover" />
+                          <span className="font-bold text-stone-900">{user.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-8 py-6">
+                        <div className="space-y-1">
+                          <p className="text-sm text-stone-600">{user.email}</p>
+                          <p className="text-xs text-stone-400">{user.phone || 'Sem telefone'}</p>
+                        </div>
+                      </td>
+                      <td className="px-8 py-6">
+                        <div className="flex items-center gap-2">
+                          <Star size={16} className="text-amber-500 fill-amber-500" />
+                          <span className="font-black text-brand-primary">{user.points || 0}</span>
+                        </div>
+                      </td>
+                      <td className="px-8 py-6">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
+                          (user.points || 0) >= 1000 ? 'bg-purple-100 text-purple-600' :
+                          (user.points || 0) >= 500 ? 'bg-blue-100 text-blue-600' :
+                          'bg-stone-100 text-stone-600'
+                        }`}>
+                          {(user.points || 0) >= 1000 ? 'Diamante' :
+                           (user.points || 0) >= 500 ? 'Ouro' : 'Bronze'}
+                        </span>
+                      </td>
+                      <td className="px-8 py-6">
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => handleUpdateUserPoints(user.id, Math.max(0, (user.points || 0) - 50))}
+                            className="p-2 bg-stone-100 text-stone-600 rounded-xl hover:bg-stone-200 transition-all"
+                            title="Remover 50 pontos"
+                          >
+                            <Minus size={14} />
+                          </button>
+                          <input 
+                            type="number" 
+                            value={user.points || 0}
+                            onChange={(e) => handleUpdateUserPoints(user.id, parseInt(e.target.value) || 0)}
+                            className="w-16 bg-stone-50 border border-stone-100 rounded-xl py-1 text-center text-xs font-black text-stone-700 outline-none"
+                          />
+                          <button 
+                            onClick={() => handleUpdateUserPoints(user.id, (user.points || 0) + 50)}
+                            className="p-2 bg-brand-primary/10 text-brand-primary rounded-xl hover:bg-brand-primary hover:text-white transition-all"
+                            title="Adicionar 50 pontos"
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'settings' && (
           <div className="space-y-8">
             <header>
@@ -929,6 +1345,130 @@ export default function Admin() {
           </div>
         )}
       </main>
+
+      {/* Ingredient Modal */}
+      <AnimatePresence>
+        {isIngredientModalOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsIngredientModalOpen(false)}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[80]"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed left-0 right-0 bottom-0 md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 w-full md:max-w-lg bg-white rounded-t-[40px] md:rounded-[40px] shadow-2xl z-[90] overflow-hidden"
+            >
+              <form onSubmit={handleSaveIngredient} className="p-6 md:p-10 space-y-6">
+                <header className="flex justify-between items-center mb-4">
+                  <h2 className="text-2xl font-black text-stone-900">
+                    {editingIngredient ? 'Editar Ingrediente' : 'Novo Ingrediente'}
+                  </h2>
+                  <button type="button" onClick={() => setIsIngredientModalOpen(false)} className="text-stone-400 hover:text-stone-600">
+                    <X size={24} />
+                  </button>
+                </header>
+
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Nome</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={ingredientFormData.name}
+                      onChange={e => setIngredientFormData({...ingredientFormData, name: e.target.value})}
+                      className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none font-bold"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Unidade</label>
+                      <select 
+                        value={ingredientFormData.unit}
+                        onChange={e => setIngredientFormData({...ingredientFormData, unit: e.target.value})}
+                        className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none font-bold"
+                      >
+                        <option value="kg">Quilograma (kg)</option>
+                        <option value="g">Grama (g)</option>
+                        <option value="un">Unidade (un)</option>
+                        <option value="L">Litro (L)</option>
+                        <option value="ml">Mililitro (ml)</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Preço de Custo (R$)</label>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        required
+                        value={ingredientFormData.costPrice}
+                        onChange={e => setIngredientFormData({...ingredientFormData, costPrice: e.target.value})}
+                        className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Estoque Inicial</label>
+                      <input 
+                        type="number" 
+                        step="0.1"
+                        required
+                        value={ingredientFormData.stock}
+                        onChange={e => setIngredientFormData({...ingredientFormData, stock: e.target.value})}
+                        className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none font-bold"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Estoque Mínimo</label>
+                      <input 
+                        type="number" 
+                        step="0.1"
+                        required
+                        value={ingredientFormData.minStock}
+                        onChange={e => setIngredientFormData({...ingredientFormData, minStock: e.target.value})}
+                        className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-black text-stone-500 uppercase tracking-wider">URL da Imagem (Opcional)</label>
+                    <input 
+                      type="text" 
+                      value={ingredientFormData.image}
+                      onChange={e => setIngredientFormData({...ingredientFormData, image: e.target.value})}
+                      className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button 
+                    type="button"
+                    onClick={() => setIsIngredientModalOpen(false)}
+                    className="flex-1 py-4 rounded-2xl font-bold text-stone-500 hover:bg-stone-50 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    type="submit"
+                    className="flex-1 bg-brand-primary text-brand-secondary py-4 rounded-2xl font-bold shadow-lg shadow-brand-primary/20 hover:scale-105 transition-all"
+                  >
+                    Salvar
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Driver Modal */}
       <AnimatePresence>
@@ -1169,6 +1709,19 @@ export default function Admin() {
                     </div>
 
                     <div className="space-y-1">
+                      <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Preço de Custo (R$)</label>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        value={formData.costPrice}
+                        onChange={e => setFormData({...formData, costPrice: e.target.value})}
+                        className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                    <div className="space-y-1">
                       <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Preço Promocional (R$)</label>
                       <input 
                         type="number" 
@@ -1178,6 +1731,47 @@ export default function Admin() {
                         className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none"
                       />
                     </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Preço Oferta Relâmpago (R$)</label>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        value={formData.flashSalePrice}
+                        onChange={e => setFormData({...formData, flashSalePrice: e.target.value})}
+                        className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Tags (separadas por vírgula)</label>
+                    <input 
+                      type="text" 
+                      placeholder="Ex: Sem Açúcar, Vegano, Mais Vendido"
+                      value={formData.tags}
+                      onChange={e => setFormData({...formData, tags: e.target.value})}
+                      className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-4 bg-stone-50 p-4 rounded-2xl border border-stone-100">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-10 h-10 bg-brand-primary/10 text-brand-primary rounded-xl flex items-center justify-center">
+                        <Package size={20} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-black text-stone-900">Produto é um Combo?</p>
+                        <p className="text-[10px] text-stone-400">Habilita seleção de itens do combo</p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => setFormData({...formData, isCombo: !formData.isCombo})}
+                      className={`w-12 h-6 rounded-full transition-all relative ${formData.isCombo ? 'bg-brand-primary' : 'bg-stone-200'}`}
+                    >
+                      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${formData.isCombo ? 'right-1' : 'left-1'}`} />
+                    </button>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">

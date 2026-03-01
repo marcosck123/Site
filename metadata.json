@@ -1,5 +1,5 @@
 {
   "name": "Doce Entrega",
   "description": "Um marketplace de doces artesanais e delivery, inspirado nos melhores apps de entrega.",
-  "requestFramePermissions": []
+  "requestFramePermissions": ["geolocation"]
 }

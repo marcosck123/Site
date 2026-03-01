@@ -1,4 +1,4 @@
-import { Product, User, CartItem, Order, OrderStatus, Coupon, Review, Driver, AppSettings } from '../types';
+import { Product, User, CartItem, Order, OrderStatus, Coupon, Review, Driver, AppSettings, Ingredient } from '../types';
 
 const DB_KEYS = {
   PRODUCTS: 'doce_entrega_products',
@@ -11,6 +11,7 @@ const DB_KEYS = {
   REVIEWS: 'doce_entrega_reviews',
   DRIVERS: 'doce_entrega_drivers',
   SETTINGS: 'doce_entrega_settings',
+  INGREDIENTS: 'doce_entrega_ingredients',
 };
 
 // Initial data if empty
@@ -84,6 +85,37 @@ export const LocalDB = {
     LocalDB.saveProducts(filtered);
   },
 
+  // Ingredients
+  getIngredients: (): Ingredient[] => {
+    const data = localStorage.getItem(DB_KEYS.INGREDIENTS);
+    return data ? JSON.parse(data) : [];
+  },
+
+  saveIngredients: (ingredients: Ingredient[]) => {
+    localStorage.setItem(DB_KEYS.INGREDIENTS, JSON.stringify(ingredients));
+  },
+
+  addIngredient: (ingredient: Ingredient) => {
+    const ingredients = LocalDB.getIngredients();
+    ingredients.push(ingredient);
+    LocalDB.saveIngredients(ingredients);
+  },
+
+  updateIngredient: (updatedIngredient: Ingredient) => {
+    const ingredients = LocalDB.getIngredients();
+    const index = ingredients.findIndex(i => i.id === updatedIngredient.id);
+    if (index !== -1) {
+      ingredients[index] = updatedIngredient;
+      LocalDB.saveIngredients(ingredients);
+    }
+  },
+
+  deleteIngredient: (id: string) => {
+    const ingredients = LocalDB.getIngredients();
+    const filtered = ingredients.filter(i => i.id !== id);
+    LocalDB.saveIngredients(filtered);
+  },
+
   // User Auth
   getUsers: (): User[] => {
     const data = localStorage.getItem(DB_KEYS.USERS);
@@ -120,6 +152,28 @@ export const LocalDB = {
     }
   },
 
+  toggleFavorite: (productId: string) => {
+    const user = LocalDB.getCurrentUser();
+    if (!user) return;
+    
+    const favorites = user.favorites || [];
+    const index = favorites.indexOf(productId);
+    
+    if (index === -1) {
+      favorites.push(productId);
+    } else {
+      favorites.splice(index, 1);
+    }
+    
+    LocalDB.setCurrentUser({ ...user, favorites });
+  },
+
+  isFavorite: (productId: string): boolean => {
+    const user = LocalDB.getCurrentUser();
+    if (!user || !user.favorites) return false;
+    return user.favorites.includes(productId);
+  },
+
   // Cart
   getCart: (): CartItem[] => {
     const data = localStorage.getItem(DB_KEYS.CART);
@@ -144,6 +198,50 @@ export const LocalDB = {
     const orders = LocalDB.getOrders();
     orders.push(order);
     LocalDB.saveOrders(orders);
+
+    // Handle Inventory and Loyalty if enabled
+    const settings = LocalDB.getSettings();
+    
+    if (settings.inventoryControl) {
+      const products = LocalDB.getProducts();
+      order.items.forEach(item => {
+        const productIndex = products.findIndex(p => p.id === item.id);
+        if (productIndex !== -1 && products[productIndex].stock !== undefined) {
+          products[productIndex].stock = Math.max(0, products[productIndex].stock! - item.quantity);
+        }
+      });
+      LocalDB.saveProducts(products);
+    }
+
+    if (settings.loyaltyProgram) {
+      const users = LocalDB.getUsers();
+      const userIndex = users.findIndex(u => u.id === order.userId);
+      if (userIndex !== -1) {
+        const pointsEarned = Math.floor(order.total); // 1 point per R$ 1
+        users[userIndex].points = (users[userIndex].points || 0) + pointsEarned;
+        LocalDB.saveUsers(users);
+        
+        // If current user is the one who ordered, update current user too
+        const currentUser = LocalDB.getCurrentUser();
+        if (currentUser && currentUser.id === order.userId) {
+          LocalDB.setCurrentUser({ ...currentUser, points: users[userIndex].points });
+        }
+      }
+    }
+  },
+
+  updateUserPoints: (userId: string, points: number) => {
+    const users = LocalDB.getUsers();
+    const index = users.findIndex(u => u.id === userId);
+    if (index !== -1) {
+      users[index].points = points;
+      LocalDB.saveUsers(users);
+      
+      const currentUser = LocalDB.getCurrentUser();
+      if (currentUser && currentUser.id === userId) {
+        LocalDB.setCurrentUser({ ...currentUser, points });
+      }
+    }
   },
 
   updateOrderStatus: (orderId: string, status: OrderStatus) => {
@@ -158,11 +256,14 @@ export const LocalDB = {
   // Stats
   getStats: () => {
     const orders = LocalDB.getOrders().filter(o => o.status === 'Entregue');
-    // Simple stats calculation
+    const users = LocalDB.getUsers();
+    const products = LocalDB.getProducts();
+    
     return {
       totalRevenue: orders.reduce((sum, o) => sum + o.total, 0),
       orderCount: orders.length,
-      // More complex stats would go here
+      totalLoyaltyPoints: users.reduce((sum, u) => sum + (u.points || 0), 0),
+      totalInventoryStock: products.reduce((sum, p) => sum + (p.stock || 0), 0),
     };
   },
 
@@ -227,9 +328,32 @@ export const LocalDB = {
   },
 
   // Reviews
-  getReviews: (): Review[] => {
+  getReviews: (productId?: string): Review[] => {
     const data = localStorage.getItem(DB_KEYS.REVIEWS);
-    return data ? JSON.parse(data) : [];
+    const reviews: Review[] = data ? JSON.parse(data) : [
+      {
+        id: 'r1',
+        productId: '1',
+        userId: 'u1',
+        userName: 'Ana Silva',
+        rating: 5,
+        comment: 'Melhor brigadeiro que já comi! Super cremoso.',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'r2',
+        productId: '1',
+        userId: 'u2',
+        userName: 'João Santos',
+        rating: 4,
+        comment: 'Muito bom, mas achei um pouco pequeno.',
+        createdAt: new Date().toISOString()
+      }
+    ];
+    if (productId) {
+      return reviews.filter(r => r.productId === productId);
+    }
+    return reviews;
   },
 
   addReview: (review: Review) => {
@@ -260,6 +384,41 @@ export const LocalDB = {
 
   saveSettings: (settings: AppSettings) => {
     localStorage.setItem(DB_KEYS.SETTINGS, JSON.stringify(settings));
+  },
+
+  // Referral
+  generateReferralCode: (userName: string): string => {
+    const prefix = userName.slice(0, 3).toUpperCase();
+    const random = Math.floor(1000 + Math.random() * 9000);
+    return `${prefix}${random}`;
+  },
+
+  applyReferral: (code: string) => {
+    const users = LocalDB.getUsers();
+    const referrer = users.find(u => u.referralCode === code);
+    if (referrer) {
+      // Give points to referrer
+      referrer.points = (referrer.points || 0) + 50;
+      LocalDB.saveUsers(users);
+      return true;
+    }
+    return false;
+  },
+
+  redeemPoints: (userId: string, pointsToRedeem: number): boolean => {
+    const users = LocalDB.getUsers();
+    const userIndex = users.findIndex(u => u.id === userId);
+    if (userIndex !== -1 && (users[userIndex].points || 0) >= pointsToRedeem) {
+      users[userIndex].points = (users[userIndex].points || 0) - pointsToRedeem;
+      LocalDB.saveUsers(users);
+      
+      const currentUser = LocalDB.getCurrentUser();
+      if (currentUser && currentUser.id === userId) {
+        LocalDB.setCurrentUser({ ...currentUser, points: users[userIndex].points });
+      }
+      return true;
+    }
+    return false;
   },
 
   // Popular Products (Simulated based on orders)

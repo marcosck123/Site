@@ -8,6 +8,8 @@ export interface User {
   isAdmin?: boolean;
   points?: number;
   referralCode?: string;
+  referredBy?: string; // New: who referred this user
+  favorites?: string[]; // New: array of product IDs
   birthday?: string;
 }
 
@@ -17,6 +19,7 @@ export interface Product {
   description: string;
   price: number;
   promoPrice?: number;
+  costPrice?: number; // New: for financial reports
   image: string;
   category: string;
   rating: number;
@@ -24,6 +27,9 @@ export interface Product {
   stock?: number;
   isCombo?: boolean;
   comboItems?: string[];
+  flashSalePrice?: number; // New: for flash sales
+  flashSaleEnd?: string; // New: ISO string
+  tags?: string[]; // New: ['Sem Açúcar', 'Vegano', etc]
 }
 
 export interface CartItem extends Product {
@@ -46,6 +52,8 @@ export interface Order {
   changeFor?: number;
   couponCode?: string;
   scheduledFor?: string;
+  isGift?: boolean; // New: for gift mode
+  giftMessage?: string; // New: message for gift
   pointsEarned?: number;
   driverId?: string;
 }
@@ -74,6 +82,16 @@ export interface Driver {
   name: string;
   phone: string;
   isActive: boolean;
+}
+
+export interface Ingredient {
+  id: string;
+  name: string;
+  unit: string; // e.g., 'kg', 'g', 'un', 'L'
+  stock: number;
+  minStock: number;
+  costPrice: number;
+  image?: string;
 }
 
 export interface LoyaltyPoints {
