@@ -18,12 +18,28 @@ export default function Products({ onAddToCart }: ProductsPageProps) {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [productReviews, setProductReviews] = useState<Review[]>([]);
   const [quantity, setQuantity] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [selectedDietary, setSelectedDietary] = useState<string[]>([]);
+  const [isComboBuilderOpen, setIsComboBuilderOpen] = useState(false);
+  const [comboSelection, setComboSelection] = useState<Product[]>([]);
+
+  const dietaryOptions = [
+    { id: 'vegano', label: 'Vegano', icon: '🌿' },
+    { id: 'sem-acucar', label: 'Sem Açúcar', icon: '🍎' },
+    { id: 'sem-gluten', label: 'Sem Glúten', icon: '🌾' },
+    { id: 'zero-lactose', label: 'Zero Lactose', icon: '🥛' },
+  ];
 
   useEffect(() => {
     setProducts(LocalDB.getProducts());
     setCategories(['Todos', ...LocalDB.getCategories()]);
     const user = LocalDB.getCurrentUser();
     if (user) setUserFavorites(user.favorites || []);
+    
+    // Simulate loading for skeleton effect
+    const timer = setTimeout(() => setIsLoading(false), 1000);
+    return () => clearTimeout(timer);
   }, []);
 
   const allTags = useMemo(() => {
@@ -38,9 +54,11 @@ export default function Products({ onAddToCart }: ProductsPageProps) {
       const matchesTag = !selectedTag || product.tags?.includes(selectedTag);
       const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           product.description.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCategory && matchesSearch && matchesTag;
+      const matchesDietary = selectedDietary.length === 0 || 
+                            selectedDietary.every(d => product.tags?.includes(d));
+      return matchesCategory && matchesSearch && matchesTag && matchesDietary;
     });
-  }, [selectedCategory, searchQuery, products, selectedTag]);
+  }, [selectedCategory, searchQuery, products, selectedTag, selectedDietary]);
 
   const handleToggleFavorite = (productId: string) => {
     LocalDB.toggleFavorite(productId);
@@ -65,7 +83,7 @@ export default function Products({ onAddToCart }: ProductsPageProps) {
     <div className="container mx-auto px-6 py-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
         <div>
-          <h1 className="text-4xl font-bold text-stone-900">Nosso Cardápio</h1>
+          <h1 className="text-4xl md:text-5xl font-display font-black text-stone-900">Nosso Cardápio</h1>
           <p className="text-stone-500 mt-2">Explore nossas delícias artesanais</p>
         </div>
 
@@ -89,49 +107,116 @@ export default function Products({ onAddToCart }: ProductsPageProps) {
         </div>
       </div>
 
-      {/* Categories Scroll */}
-      <div className="flex flex-col gap-4 mb-12">
-        <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar -mx-6 px-6">
-          {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`px-6 py-3 rounded-2xl font-bold whitespace-nowrap transition-all ${
-                  selectedCategory === category
-                    ? 'bg-brand-primary text-brand-secondary shadow-lg shadow-brand-primary/20 scale-105'
-                    : 'bg-white text-stone-600 border border-stone-100 hover:bg-stone-50'
-                }`}
-              >
-              {category}
-            </button>
-          ))}
-        </div>
-
-        {allTags.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar -mx-6 px-6">
-            <button 
-              onClick={() => setSelectedTag(null)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${!selectedTag ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-500'}`}
-            >
-              Todos os Filtros
-            </button>
-            {allTags.map(tag => (
-              <button 
-                key={tag}
-                onClick={() => setSelectedTag(tag)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${selectedTag === tag ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-500'}`}
-              >
-                {tag}
-              </button>
+      {/* Categories Scroll - Sticky */}
+      <div className="sticky top-[73px] z-40 bg-stone-50/80 backdrop-blur-md -mx-6 px-6 py-4 mb-12 border-b border-stone-100">
+        <div className="flex flex-col gap-4">
+          <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+            {categories.map((category) => (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`px-6 py-3 rounded-2xl font-bold whitespace-nowrap transition-all ${
+                    selectedCategory === category
+                      ? 'bg-brand-primary text-brand-secondary shadow-lg shadow-brand-primary/20'
+                      : 'bg-white text-stone-600 border border-stone-100 hover:bg-stone-50'
+                  }`}
+                >
+                  {category}
+                </motion.button>
             ))}
           </div>
-        )}
+          
+          {allTags.length > 0 && (
+            <div className="flex flex-col gap-4">
+              <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                <button
+                  onClick={() => setSelectedTag(null)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                    !selectedTag ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-500'
+                  }`}
+                >
+                  Todos os Filtros
+                </button>
+                {allTags.map(tag => (
+                  <button
+                    key={tag}
+                    onClick={() => setSelectedTag(tag)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                      selectedTag === tag ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-500'
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                {dietaryOptions.map(option => (
+                  <button
+                    key={option.id}
+                    onClick={() => {
+                      setSelectedDietary(prev => 
+                        prev.includes(option.id) ? prev.filter(d => d !== option.id) : [...prev, option.id]
+                      );
+                    }}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 ${
+                      selectedDietary.includes(option.id) 
+                        ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' 
+                        : 'bg-white text-stone-500 border border-stone-100'
+                    }`}
+                  >
+                    <span>{option.icon}</span>
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Build your Combo Banner */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-12 bg-gradient-to-r from-brand-primary to-pink-500 rounded-[40px] p-8 md:p-12 text-brand-secondary relative overflow-hidden group cursor-pointer"
+        onClick={() => setIsComboBuilderOpen(true)}
+      >
+        <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:scale-110 transition-transform">
+          <Sparkles size={160} />
+        </div>
+        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="text-center md:text-left">
+            <h2 className="text-3xl md:text-5xl font-display font-black mb-4">Monte seu Combo! 🎨</h2>
+            <p className="text-brand-secondary/80 text-lg max-w-md">
+              Escolha 4 itens e ganhe <span className="text-white font-black">15% de desconto</span> automático.
+            </p>
+          </div>
+          <button className="bg-brand-secondary text-brand-primary px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-white transition-all shadow-xl">
+            Começar Agora
+          </button>
+        </div>
+      </motion.div>
 
       {/* Products Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-        <AnimatePresence mode="popLayout">
-          {filteredProducts.map((product) => (
+        {isLoading ? (
+          Array.from({ length: 8 }).map((_, idx) => (
+            <div key={idx} className="bg-white rounded-[32px] p-4 border border-stone-100 space-y-4">
+              <div className="h-48 skeleton" />
+              <div className="h-6 w-2/3 skeleton" />
+              <div className="h-4 w-full skeleton" />
+              <div className="flex justify-between items-center pt-4">
+                <div className="h-6 w-20 skeleton" />
+                <div className="h-10 w-10 rounded-xl skeleton" />
+              </div>
+            </div>
+          ))
+        ) : (
+          <AnimatePresence mode="popLayout">
+            {filteredProducts.map((product) => (
             <motion.div
               layout
               key={product.id}
@@ -217,10 +302,11 @@ export default function Products({ onAddToCart }: ProductsPageProps) {
               </div>
             </motion.div>
           ))}
-        </AnimatePresence>
+          </AnimatePresence>
+        )}
       </div>
 
-      {filteredProducts.length === 0 && (
+      {filteredProducts.length === 0 && !isLoading && (
         <div className="text-center py-20">
           <div className="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <Search size={32} className="text-stone-400" />
@@ -235,6 +321,114 @@ export default function Products({ onAddToCart }: ProductsPageProps) {
           </button>
         </div>
       )}
+      {/* Combo Builder Modal */}
+      <AnimatePresence>
+        {isComboBuilderOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsComboBuilderOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[120]"
+            />
+            <motion.div 
+              initial={{ opacity: 0, y: 100 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 100 }}
+              className="fixed inset-x-0 bottom-0 md:inset-10 bg-white rounded-t-[40px] md:rounded-[40px] shadow-2xl z-[130] overflow-hidden flex flex-col"
+            >
+              <header className="p-8 border-b border-stone-100 flex justify-between items-center bg-stone-50">
+                <div>
+                  <h2 className="text-3xl font-black text-stone-900">Monte seu Combo</h2>
+                  <p className="text-stone-500">Selecione 4 itens para ganhar o desconto</p>
+                </div>
+                <button onClick={() => setIsComboBuilderOpen(false)} className="p-2 bg-white rounded-full text-stone-400">
+                  <X size={24} />
+                </button>
+              </header>
+
+              <div className="flex-1 overflow-y-auto p-8">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  {products.filter(p => !p.isCombo).map(product => (
+                    <div 
+                      key={product.id}
+                      onClick={() => {
+                        if (comboSelection.find(p => p.id === product.id)) {
+                          setComboSelection(prev => prev.filter(p => p.id !== product.id));
+                        } else if (comboSelection.length < 4) {
+                          setComboSelection(prev => [...prev, product]);
+                        }
+                      }}
+                      className={`p-3 rounded-3xl border-2 transition-all cursor-pointer relative ${
+                        comboSelection.find(p => p.id === product.id) 
+                          ? 'border-brand-primary bg-brand-primary/5' 
+                          : 'border-stone-100 hover:border-brand-primary/30'
+                      }`}
+                    >
+                      <img src={product.image} alt={product.name} className="w-full h-24 object-cover rounded-2xl mb-2" />
+                      <p className="text-[10px] font-bold text-stone-900 line-clamp-1">{product.name}</p>
+                      {comboSelection.find(p => p.id === product.id) && (
+                        <div className="absolute -top-2 -right-2 bg-brand-primary text-brand-secondary w-6 h-6 rounded-full flex items-center justify-center font-black text-xs">
+                          {comboSelection.findIndex(p => p.id === product.id) + 1}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <footer className="p-8 bg-stone-50 border-t border-stone-100 flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex -space-x-4">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className={`w-12 h-12 rounded-full border-4 border-white flex items-center justify-center overflow-hidden ${comboSelection[i] ? 'bg-brand-primary' : 'bg-stone-200'}`}>
+                      {comboSelection[i] ? (
+                        <img src={comboSelection[i].image} className="w-full h-full object-cover" />
+                      ) : (
+                        <Plus size={20} className="text-stone-400" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="flex items-center gap-6">
+                  <div className="text-right">
+                    <p className="text-xs font-black text-stone-400 uppercase">Total do Combo</p>
+                    <p className="text-2xl font-black text-stone-900">
+                      R$ {(comboSelection.reduce((acc, p) => acc + p.price, 0) * 0.85).toFixed(2)}
+                      <span className="ml-2 text-xs text-stone-400 line-through">R$ {comboSelection.reduce((acc, p) => acc + p.price, 0).toFixed(2)}</span>
+                    </p>
+                  </div>
+                  <button 
+                    disabled={comboSelection.length < 4}
+                    onClick={() => {
+                      const comboProduct: Product = {
+                        id: 'combo-' + Date.now(),
+                        name: 'Combo Personalizado',
+                        description: 'Um combo delicioso montado por você!',
+                        price: comboSelection.reduce((acc, p) => acc + p.price, 0) * 0.85,
+                        category: 'Combos',
+                        image: comboSelection[0].image,
+                        rating: 5,
+                        deliveryTime: '30-45 min',
+                        isCombo: true,
+                        comboItems: comboSelection.map(p => p.name)
+                      };
+                      onAddToCart(comboProduct);
+                      setIsComboBuilderOpen(false);
+                      setComboSelection([]);
+                    }}
+                    className="bg-brand-primary text-brand-secondary px-10 py-4 rounded-2xl font-black shadow-xl shadow-brand-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Adicionar ao Carrinho
+                  </button>
+                </div>
+              </footer>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Product Detail Modal */}
       <AnimatePresence>
         {selectedProduct && (

@@ -1,4 +1,4 @@
-import { Product, User, CartItem, Order, OrderStatus, Coupon, Review, Driver, AppSettings, Ingredient } from '../types';
+import { Product, User, CartItem, Order, OrderStatus, Coupon, Review, Driver, AppSettings, Ingredient, Notification, SavedAddress, Mission, AppBanner, FavoriteFolder } from '../types';
 
 const DB_KEYS = {
   PRODUCTS: 'doce_entrega_products',
@@ -196,7 +196,16 @@ export const LocalDB = {
 
   addOrder: (order: Order) => {
     const orders = LocalDB.getOrders();
-    orders.push(order);
+    
+    // 5% chance for a Golden Ticket
+    const isGoldenTicket = Math.random() < 0.05;
+    const orderWithGoldenTicket = { 
+      ...order, 
+      isGoldenTicket, 
+      goldenTicketClaimed: false 
+    };
+    
+    orders.push(orderWithGoldenTicket);
     LocalDB.saveOrders(orders);
 
     // Handle Inventory and Loyalty if enabled
@@ -217,14 +226,33 @@ export const LocalDB = {
       const users = LocalDB.getUsers();
       const userIndex = users.findIndex(u => u.id === order.userId);
       if (userIndex !== -1) {
-        const pointsEarned = Math.floor(order.total); // 1 point per R$ 1
+        let pointsEarned = Math.floor(order.total); // 1 point per R$ 1
+        
+        // Check for "Early Bird" mission (before 2 PM)
+        const now = new Date();
+        if (now.getHours() < 14) {
+          pointsEarned += 10;
+          LocalDB.addNotification(order.userId, {
+            id: Math.random().toString(36).substr(2, 9),
+            title: '🎯 Missão Cumprida!',
+            message: 'Você pediu antes das 14h e ganhou 10 pontos extras!',
+            type: 'order',
+            isRead: false,
+            createdAt: new Date().toISOString()
+          });
+        }
+
         users[userIndex].points = (users[userIndex].points || 0) + pointsEarned;
         LocalDB.saveUsers(users);
+        
+        // Update Tier
+        LocalDB.updateLoyaltyTier(order.userId);
         
         // If current user is the one who ordered, update current user too
         const currentUser = LocalDB.getCurrentUser();
         if (currentUser && currentUser.id === order.userId) {
-          LocalDB.setCurrentUser({ ...currentUser, points: users[userIndex].points });
+          const updatedUser = LocalDB.getUsers().find(u => u.id === order.userId);
+          if (updatedUser) LocalDB.setCurrentUser(updatedUser);
         }
       }
     }
@@ -250,6 +278,16 @@ export const LocalDB = {
     if (index !== -1) {
       orders[index].status = status;
       LocalDB.saveOrders(orders);
+
+      // Send notification
+      LocalDB.addNotification(orders[index].userId, {
+        id: Math.random().toString(36).substr(2, 9),
+        title: 'Status do Pedido Atualizado',
+        message: `Seu pedido #${orderId.slice(-6)} agora está: ${status}`,
+        type: 'order',
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
     }
   },
 
@@ -378,12 +416,139 @@ export const LocalDB = {
     return data ? JSON.parse(data) : {
       darkMode: false,
       inventoryControl: true,
-      loyaltyProgram: true
+      loyaltyProgram: true,
+      isStoreOpen: true,
+      banners: [
+        {
+          id: '1',
+          image: 'https://picsum.photos/seed/promo1/1200/400',
+          title: 'Festival de Brigadeiros',
+          subtitle: 'Leve 3, Pague 2 em todos os brigadeiros gourmet.',
+          isActive: true
+        }
+      ]
     };
   },
 
   saveSettings: (settings: AppSettings) => {
     localStorage.setItem(DB_KEYS.SETTINGS, JSON.stringify(settings));
+  },
+
+  toggleStoreStatus: () => {
+    const settings = LocalDB.getSettings();
+    settings.isStoreOpen = !settings.isStoreOpen;
+    LocalDB.saveSettings(settings);
+    return settings.isStoreOpen;
+  },
+
+  // Wallet
+  updateWalletBalance: (userId: string, amount: number) => {
+    const users = LocalDB.getUsers();
+    const index = users.findIndex(u => u.id === userId);
+    if (index !== -1) {
+      users[index].walletBalance = (users[index].walletBalance || 0) + amount;
+      LocalDB.saveUsers(users);
+      
+      const currentUser = LocalDB.getCurrentUser();
+      if (currentUser && currentUser.id === userId) {
+        LocalDB.setCurrentUser(users[index]);
+      }
+    }
+  },
+
+  // Banners
+  getBanners: (): AppBanner[] => {
+    return LocalDB.getSettings().banners || [];
+  },
+
+  saveBanners: (banners: AppBanner[]) => {
+    const settings = LocalDB.getSettings();
+    settings.banners = banners;
+    LocalDB.saveSettings(settings);
+  },
+
+  // Favorite Folders
+  getFavoriteFolders: (userId: string): FavoriteFolder[] => {
+    const users = LocalDB.getUsers();
+    const user = users.find(u => u.id === userId);
+    return user?.favoriteFolders || [];
+  },
+
+  saveFavoriteFolders: (userId: string, folders: FavoriteFolder[]) => {
+    const users = LocalDB.getUsers();
+    const index = users.findIndex(u => u.id === userId);
+    if (index !== -1) {
+      users[index].favoriteFolders = folders;
+      LocalDB.saveUsers(users);
+      
+      const currentUser = LocalDB.getCurrentUser();
+      if (currentUser && currentUser.id === userId) {
+        LocalDB.setCurrentUser(users[index]);
+      }
+    }
+  },
+
+  // Admin Reports
+  getAbandonedCarts: () => {
+    // Simulated: Users with items in cart but no orders in last 24h
+    const users = LocalDB.getUsers();
+    const orders = LocalDB.getOrders();
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    return users.filter(u => {
+      const hasItems = LocalDB.getCart().length > 0; // Simplified: checking current cart
+      const hasRecentOrder = orders.some(o => o.userId === u.id && new Date(o.createdAt) > oneDayAgo);
+      return hasItems && !hasRecentOrder;
+    });
+  },
+
+  getDeliveryHeatmap: () => {
+    const orders = LocalDB.getOrders();
+    const heatmap: Record<string, number> = {};
+    orders.forEach(o => {
+      const neighborhood = o.address.split(',')[1]?.trim() || 'Outros';
+      heatmap[neighborhood] = (heatmap[neighborhood] || 0) + 1;
+    });
+    return Object.entries(heatmap).map(([name, value]) => ({ name, value }));
+  },
+
+  getFinancialReport: () => {
+    const orders = LocalDB.getOrders().filter(o => o.status === 'Entregue');
+    const revenue = orders.reduce((sum, o) => sum + o.total, 0);
+    const cost = orders.reduce((sum, o) => {
+      return sum + o.items.reduce((iSum, item) => iSum + (item.costPrice || item.price * 0.4) * item.quantity, 0);
+    }, 0);
+    
+    return {
+      revenue,
+      cost,
+      profit: revenue - cost,
+      margin: ((revenue - cost) / revenue) * 100
+    };
+  },
+
+  updateWalletBalance: (userId: string, amount: number) => {
+    const users = LocalDB.getUsers();
+    const index = users.findIndex(u => u.id === userId);
+    if (index !== -1) {
+      users[index].walletBalance = (users[index].walletBalance || 0) + amount;
+      LocalDB.saveUsers(users);
+      
+      const currentUser = LocalDB.getCurrentUser();
+      if (currentUser && currentUser.id === userId) {
+        LocalDB.setCurrentUser(users[index]);
+      }
+    }
+  },
+
+  getFavoriteFolders: (): any[] => {
+    const folders = localStorage.getItem('favoriteFolders');
+    return folders ? JSON.parse(folders) : [];
+  },
+
+  saveFavoriteFolders: (folders: any[]) => {
+    localStorage.setItem('favoriteFolders', JSON.stringify(folders));
   },
 
   // Referral
@@ -438,5 +603,193 @@ export const LocalDB = {
       .sort((a, b) => b.sales - a.sales);
 
     return sorted.slice(0, limit);
+  },
+
+  // Addresses
+  addAddress: (userId: string, address: SavedAddress) => {
+    const users = LocalDB.getUsers();
+    const index = users.findIndex(u => u.id === userId);
+    if (index !== -1) {
+      if (!users[index].savedAddresses) users[index].savedAddresses = [];
+      users[index].savedAddresses!.push(address);
+      LocalDB.saveUsers(users);
+      
+      const currentUser = LocalDB.getCurrentUser();
+      if (currentUser && currentUser.id === userId) {
+        LocalDB.setCurrentUser({ ...currentUser, savedAddresses: users[index].savedAddresses });
+      }
+    }
+  },
+
+  deleteAddress: (userId: string, addressId: string) => {
+    const users = LocalDB.getUsers();
+    const index = users.findIndex(u => u.id === userId);
+    if (index !== -1 && users[index].savedAddresses) {
+      users[index].savedAddresses = users[index].savedAddresses!.filter(a => a.id !== addressId);
+      LocalDB.saveUsers(users);
+      
+      const currentUser = LocalDB.getCurrentUser();
+      if (currentUser && currentUser.id === userId) {
+        LocalDB.setCurrentUser({ ...currentUser, savedAddresses: users[index].savedAddresses });
+      }
+    }
+  },
+
+  // Notifications
+  addNotification: (userId: string, notification: Notification) => {
+    const users = LocalDB.getUsers();
+    const index = users.findIndex(u => u.id === userId);
+    if (index !== -1) {
+      if (!users[index].notifications) users[index].notifications = [];
+      users[index].notifications!.unshift(notification);
+      LocalDB.saveUsers(users);
+      
+      const currentUser = LocalDB.getCurrentUser();
+      if (currentUser && currentUser.id === userId) {
+        LocalDB.setCurrentUser({ ...currentUser, notifications: users[index].notifications });
+      }
+    }
+  },
+
+  markNotificationAsRead: (userId: string, notificationId: string) => {
+    const users = LocalDB.getUsers();
+    const index = users.findIndex(u => u.id === userId);
+    if (index !== -1 && users[index].notifications) {
+      const nIndex = users[index].notifications!.findIndex(n => n.id === notificationId);
+      if (nIndex !== -1) {
+        users[index].notifications![nIndex].isRead = true;
+        LocalDB.saveUsers(users);
+        
+        const currentUser = LocalDB.getCurrentUser();
+        if (currentUser && currentUser.id === userId) {
+          LocalDB.setCurrentUser({ ...currentUser, notifications: users[index].notifications });
+        }
+      }
+    }
+  },
+
+  // Flash Sales
+  getFlashSales: (): Product[] => {
+    const products = LocalDB.getProducts();
+    const now = new Date();
+    return products.filter(p => p.flashSalePrice && p.flashSaleEnd && new Date(p.flashSaleEnd) > now);
+  },
+
+  // Missions
+  getMissions: (): Mission[] => {
+    const now = new Date();
+    const missions: Mission[] = [
+      {
+        id: 'early-bird',
+        title: 'Pássaro Madrugador',
+        description: 'Peça um doce antes das 14:00 para ganhar pontos extras!',
+        rewardPoints: 10,
+        isCompleted: false,
+        expiresAt: new Date(now.setHours(14, 0, 0, 0)).toISOString()
+      },
+      {
+        id: 'sweet-tooth',
+        title: 'Formiguinha',
+        description: 'Faça 3 pedidos em uma semana.',
+        rewardPoints: 50,
+        isCompleted: false,
+        expiresAt: new Date(now.setDate(now.getDate() + 7)).toISOString()
+      }
+    ];
+    return missions;
+  },
+
+  // Subscription
+  subscribeToSweetClub: (userId: string, plan: 'Mensal' | 'Anual') => {
+    const users = LocalDB.getUsers();
+    const index = users.findIndex(u => u.id === userId);
+    if (index !== -1) {
+      const nextBox = new Date();
+      nextBox.setDate(nextBox.getDate() + 7);
+      users[index].subscription = {
+        plan,
+        status: 'Ativo',
+        nextBoxDate: nextBox.toISOString()
+      };
+      LocalDB.saveUsers(users);
+      
+      const currentUser = LocalDB.getCurrentUser();
+      if (currentUser && currentUser.id === userId) {
+        LocalDB.setCurrentUser(users[index]);
+      }
+    }
+  },
+
+  // Loyalty Tiers
+  updateLoyaltyTier: (userId: string) => {
+    const users = LocalDB.getUsers();
+    const index = users.findIndex(u => u.id === userId);
+    if (index !== -1) {
+      const points = users[index].points || 0;
+      let tier: 'Bronze' | 'Prata' | 'Ouro' = 'Bronze';
+      if (points >= 1000) tier = 'Ouro';
+      else if (points >= 500) tier = 'Prata';
+      
+      users[index].loyaltyTier = tier;
+      LocalDB.saveUsers(users);
+      
+      const currentUser = LocalDB.getCurrentUser();
+      if (currentUser && currentUser.id === userId) {
+        LocalDB.setCurrentUser(users[index]);
+      }
+    }
+  },
+
+  // Birthday Coupon
+  checkBirthdayCoupon: (userId: string) => {
+    const user = LocalDB.getCurrentUser();
+    if (!user || !user.birthday) return;
+    
+    const today = new Date();
+    const birthday = new Date(user.birthday);
+    
+    if (today.getMonth() === birthday.getMonth() && today.getDate() === birthday.getDate()) {
+      const coupons = LocalDB.getCoupons();
+      const hasBdayCoupon = coupons.some(c => c.code === `BDAY-${user.id.slice(0, 4)}`);
+      
+      if (!hasBdayCoupon) {
+        const newCoupon: Coupon = {
+          id: `bday-${user.id}`,
+          code: `BDAY-${user.id.slice(0, 4)}`,
+          discountValue: 100,
+          discountType: 'fixed',
+          isActive: true,
+          expiresAt: new Date(today.setDate(today.getDate() + 7)).toISOString()
+        };
+        LocalDB.addCoupon(newCoupon);
+        LocalDB.addNotification(user.id, {
+          id: Math.random().toString(36).substr(2, 9),
+          title: '🎁 Feliz Aniversário!',
+          message: `Parabéns! Você ganhou um cupom de R$ 100 para comemorar seu dia: ${newCoupon.code}`,
+          type: 'order',
+          isRead: false,
+          createdAt: new Date().toISOString()
+        });
+      }
+    }
+  },
+
+  // Golden Ticket
+  claimGoldenTicket: (orderId: string) => {
+    const orders = LocalDB.getOrders();
+    const index = orders.findIndex(o => o.id === orderId);
+    if (index !== -1) {
+      orders[index].goldenTicketClaimed = true;
+      LocalDB.saveOrders(orders);
+    }
+  },
+
+  getBanners: (): any[] => {
+    const banners = localStorage.getItem('banners');
+    return banners ? JSON.parse(banners) : [];
+  },
+
+  saveBanners: (banners: any[]) => {
+    localStorage.setItem('banners', JSON.stringify(banners));
   }
 };

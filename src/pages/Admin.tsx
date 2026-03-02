@@ -53,7 +53,7 @@ import {
 
 export default function Admin() {
   const { theme, toggleTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'products' | 'categories' | 'coupons' | 'drivers' | 'settings' | 'users' | 'inventory'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'monitor' | 'products' | 'categories' | 'coupons' | 'drivers' | 'settings' | 'users' | 'inventory' | 'banners'>('dashboard');
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -432,6 +432,12 @@ export default function Admin() {
             <ShoppingBag size={20} /> Pedidos
           </button>
           <button 
+            onClick={() => setActiveTab('monitor')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'monitor' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
+          >
+            <LayoutDashboard size={20} className="text-emerald-400" /> Monitor Cozinha
+          </button>
+          <button 
             onClick={() => setActiveTab('products')}
             className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'products' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
           >
@@ -472,6 +478,12 @@ export default function Admin() {
             className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'settings' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
           >
             <Settings size={20} /> Configurações
+          </button>
+          <button 
+            onClick={() => setActiveTab('banners')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'banners' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
+          >
+            <ImageIcon size={20} /> Banners
           </button>
         </nav>
 
@@ -717,6 +729,95 @@ export default function Admin() {
           </div>
         )}
 
+        {activeTab === 'monitor' && (
+          <div className="space-y-8">
+            <header className="flex justify-between items-center">
+              <div>
+                <h1 className="text-3xl font-black text-stone-900">Monitor da Cozinha</h1>
+                <p className="text-stone-500">Acompanhe os pedidos em tempo real</p>
+              </div>
+              <div className="flex items-center gap-4 bg-white px-6 py-3 rounded-2xl border border-stone-100 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse" />
+                  <span className="text-xs font-black text-stone-500 uppercase">Pendente</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse" />
+                  <span className="text-xs font-black text-stone-500 uppercase">Aceito</span>
+                </div>
+              </div>
+            </header>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {orders.filter(o => o.status === 'Pendente' || o.status === 'Aceito').map(order => (
+                <motion.div 
+                  layout
+                  key={order.id}
+                  className={`bg-white rounded-[32px] p-6 border-2 shadow-xl ${order.status === 'Pendente' ? 'border-yellow-400' : 'border-blue-400'}`}
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Pedido #{order.id.slice(-4)}</p>
+                      <h3 className="text-lg font-black text-stone-900">{order.userName}</h3>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-bold text-stone-500">{new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                      <p className="text-[10px] font-black text-brand-primary uppercase">{order.paymentMethod}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 mb-6 bg-stone-50 p-4 rounded-2xl border border-stone-100">
+                    {order.items.map(item => (
+                      <div key={item.id} className="flex justify-between items-center">
+                        <span className="text-sm font-bold text-stone-700">{item.quantity}x {item.name}</span>
+                        {item.isCombo && <span className="text-[10px] bg-brand-primary/10 text-brand-primary px-2 py-0.5 rounded-full font-black uppercase">Combo</span>}
+                      </div>
+                    ))}
+                  </div>
+
+                  {order.giftMessage && (
+                    <div className="mb-6 p-3 bg-pink-50 rounded-xl border border-pink-100 text-pink-600 text-[10px] font-bold italic">
+                      " {order.giftMessage} "
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    {order.status === 'Pendente' ? (
+                      <>
+                        <button 
+                          onClick={() => handleUpdateOrderStatus(order.id, 'Aceito')}
+                          className="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-emerald-600 transition-all"
+                        >
+                          Aceitar
+                        </button>
+                        <button 
+                          onClick={() => handleUpdateOrderStatus(order.id, 'Recusado')}
+                          className="px-4 bg-red-50 text-red-500 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all"
+                        >
+                          <X size={18} />
+                        </button>
+                      </>
+                    ) : (
+                      <button 
+                        onClick={() => handleUpdateOrderStatus(order.id, 'Em Trânsito')}
+                        className="flex-1 bg-blue-500 text-white py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-600 transition-all"
+                      >
+                        Enviar p/ Entrega
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+              {orders.filter(o => o.status === 'Pendente' || o.status === 'Aceito').length === 0 && (
+                <div className="col-span-full text-center py-20 bg-white rounded-[40px] border border-dashed border-stone-200">
+                  <CheckCircle size={48} className="mx-auto text-emerald-500 mb-4" />
+                  <h3 className="text-xl font-black text-stone-900">Cozinha Limpa!</h3>
+                  <p className="text-stone-400">Nenhum pedido pendente no momento.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         {activeTab === 'orders' && (
           <div className="space-y-8">
             <header className="flex justify-between items-center">
@@ -757,8 +858,15 @@ export default function Admin() {
                   {orders.map((order) => (
                     <tr key={order.id} className="hover:bg-stone-50 transition-colors">
                       <td className="px-8 py-6">
-                        <p className="font-bold text-stone-900">#{order.id.slice(-4)}</p>
-                        <p className="text-xs text-stone-400">{new Date(order.createdAt).toLocaleDateString()}</p>
+                        <div className="flex flex-col gap-1">
+                          <p className="font-bold text-stone-900">#{order.id.slice(-4)}</p>
+                          <p className="text-xs text-stone-400">{new Date(order.createdAt).toLocaleDateString()}</p>
+                          {order.isGoldenTicket && (
+                            <div className="flex items-center gap-1 text-[10px] font-black text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded-full w-fit">
+                              <Ticket size={10} /> TICKET
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="px-8 py-6">
                         <div className="flex items-center gap-2">
@@ -1300,6 +1408,28 @@ export default function Admin() {
             <div className="max-w-2xl space-y-4">
               <div className="bg-white p-6 rounded-[32px] shadow-sm border border-stone-100 flex items-center justify-between">
                 <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 ${settings.isStoreOpen ? 'bg-emerald-50 text-emerald-500' : 'bg-red-50 text-red-500'} rounded-2xl flex items-center justify-center`}>
+                    <Sun size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-stone-900">Loja Aberta</h4>
+                    <p className="text-sm text-stone-500">Fechar a loja impede novos pedidos</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    const newSettings = { ...settings, isStoreOpen: !settings.isStoreOpen };
+                    setSettings(newSettings);
+                    LocalDB.saveSettings(newSettings);
+                  }}
+                  className={`w-14 h-8 rounded-full transition-all relative ${settings.isStoreOpen ? 'bg-emerald-500' : 'bg-red-500'}`}
+                >
+                  <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${settings.isStoreOpen ? 'right-1' : 'left-1'}`} />
+                </button>
+              </div>
+
+              <div className="bg-white p-6 rounded-[32px] shadow-sm border border-stone-100 flex items-center justify-between">
+                <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-stone-50 text-stone-500 rounded-2xl flex items-center justify-center">
                     <Package size={24} />
                   </div>
@@ -1341,6 +1471,106 @@ export default function Admin() {
                   <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${settings.loyaltyProgram ? 'right-1' : 'left-1'}`} />
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+        {activeTab === 'banners' && (
+          <div className="space-y-8">
+            <header className="flex justify-between items-center">
+              <div>
+                <h1 className="text-3xl font-black text-stone-900">Gerenciador de Banners</h1>
+                <p className="text-stone-500">Controle os banners da página inicial</p>
+              </div>
+              <button 
+                onClick={() => {
+                  const newBanner = { id: Date.now().toString(), image: 'https://picsum.photos/seed/banner/1200/400', title: 'Novo Banner', isActive: true };
+                  const updated = [...settings.banners, newBanner];
+                  setSettings({ ...settings, banners: updated });
+                  LocalDB.saveBanners(updated);
+                }}
+                className="bg-brand-primary text-brand-secondary px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-2 shadow-xl shadow-brand-primary/20"
+              >
+                <Plus size={20} /> Adicionar Banner
+              </button>
+            </header>
+
+            <div className="grid grid-cols-1 gap-6">
+              {settings.banners.map((banner, index) => (
+                <div key={banner.id} className="bg-white p-6 rounded-[32px] shadow-sm border border-stone-100 flex flex-col md:flex-row gap-6">
+                  <div className="w-full md:w-64 h-32 rounded-2xl overflow-hidden border border-stone-100">
+                    <img src={banner.image} alt={banner.title} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-1 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Título</label>
+                        <input 
+                          type="text" 
+                          value={banner.title}
+                          onChange={e => {
+                            const updated = [...settings.banners];
+                            updated[index].title = e.target.value;
+                            setSettings({ ...settings, banners: updated });
+                            LocalDB.saveBanners(updated);
+                          }}
+                          className="w-full bg-stone-50 border border-stone-100 rounded-xl py-2 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none font-bold"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-black text-stone-500 uppercase tracking-wider">Subtítulo</label>
+                        <input 
+                          type="text" 
+                          value={banner.subtitle || ''}
+                          onChange={e => {
+                            const updated = [...settings.banners];
+                            updated[index].subtitle = e.target.value;
+                            setSettings({ ...settings, banners: updated });
+                            LocalDB.saveBanners(updated);
+                          }}
+                          className="w-full bg-stone-50 border border-stone-100 rounded-xl py-2 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none font-bold"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-black text-stone-500 uppercase tracking-wider">URL da Imagem</label>
+                      <input 
+                        type="text" 
+                        value={banner.image}
+                        onChange={e => {
+                          const updated = [...settings.banners];
+                          updated[index].image = e.target.value;
+                          setSettings({ ...settings, banners: updated });
+                          LocalDB.saveBanners(updated);
+                        }}
+                        className="w-full bg-stone-50 border border-stone-100 rounded-xl py-2 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none font-bold"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-row md:flex-col gap-2 justify-center">
+                    <button 
+                      onClick={() => {
+                        const updated = [...settings.banners];
+                        updated[index].isActive = !updated[index].isActive;
+                        setSettings({ ...settings, banners: updated });
+                        LocalDB.saveBanners(updated);
+                      }}
+                      className={`p-3 rounded-xl transition-all ${banner.isActive ? 'bg-emerald-50 text-emerald-500' : 'bg-stone-50 text-stone-400'}`}
+                    >
+                      {banner.isActive ? <CheckCircle size={20} /> : <X size={20} />}
+                    </button>
+                    <button 
+                      onClick={() => {
+                        const updated = settings.banners.filter(b => b.id !== banner.id);
+                        setSettings({ ...settings, banners: updated });
+                        LocalDB.saveBanners(updated);
+                      }}
+                      className="p-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all"
+                    >
+                      <Trash2 size={20} />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

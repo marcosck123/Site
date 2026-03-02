@@ -11,6 +11,50 @@ export interface User {
   referredBy?: string; // New: who referred this user
   favorites?: string[]; // New: array of product IDs
   birthday?: string;
+  savedAddresses?: SavedAddress[];
+  notifications?: Notification[];
+  subscription?: Subscription;
+  loyaltyTier?: 'Bronze' | 'Prata' | 'Ouro';
+  walletBalance?: number; // New: for Sweet Wallet
+  favoriteFolders?: FavoriteFolder[]; // New: for organized favorites
+}
+
+export interface FavoriteFolder {
+  id: string;
+  name: string;
+  productIds: string[];
+}
+
+export interface Subscription {
+  plan: 'Mensal' | 'Anual';
+  status: 'Ativo' | 'Cancelado';
+  nextBoxDate: string;
+}
+
+export interface Mission {
+  id: string;
+  title: string;
+  description: string;
+  rewardPoints: number;
+  isCompleted: boolean;
+  expiresAt: string;
+}
+
+export interface SavedAddress {
+  id: string;
+  label: string; // 'Casa', 'Trabalho', etc.
+  address: string;
+  lat?: number;
+  lng?: number;
+}
+
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'order' | 'coupon' | 'info';
+  isRead: boolean;
+  createdAt: string;
 }
 
 export interface Product {
@@ -56,6 +100,12 @@ export interface Order {
   giftMessage?: string; // New: message for gift
   pointsEarned?: number;
   driverId?: string;
+  isGoldenTicket?: boolean;
+  goldenTicketClaimed?: boolean;
+  deliveryLat?: number;
+  deliveryLng?: number;
+  isDigitalGiftCard?: boolean; // New: for Digital Gift Card
+  giftCardLink?: string; // New: link to animated card
 }
 
 export interface Coupon {
@@ -105,4 +155,15 @@ export interface AppSettings {
   darkMode: boolean;
   inventoryControl: boolean;
   loyaltyProgram: boolean;
+  isStoreOpen: boolean; // New: Panic Button
+  banners: AppBanner[]; // New: Banner Manager
+}
+
+export interface AppBanner {
+  id: string;
+  image: string;
+  title: string;
+  subtitle?: string;
+  link?: string;
+  isActive: boolean;
 }

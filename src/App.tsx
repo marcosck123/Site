@@ -17,7 +17,10 @@ import {
   Truck,
   Star,
   Clock,
-  CheckCircle
+  CheckCircle,
+  Bell,
+  Smartphone,
+  Gift
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
@@ -26,6 +29,7 @@ import AuthModal from './components/AuthModal';
 import { LocalDB } from './services/localDB';
 import Admin from './pages/Admin';
 import Profile from './pages/Profile';
+import confetti from 'canvas-confetti';
 
 // Pages
 import Home from './pages/Home';
@@ -43,7 +47,8 @@ function AppContent() {
   const [user, setUser] = useState<User | null>(LocalDB.getCurrentUser());
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'credit' | 'pix' | 'cash'>('pix');
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'credit' | 'pix' | 'cash' | 'apple'>('pix');
   const [changeFor, setChangeFor] = useState<string>('');
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
@@ -54,11 +59,19 @@ function AppContent() {
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [usePoints, setUsePoints] = useState(false);
   const [pointsDiscount, setPointsDiscount] = useState(0);
+  const [timeTheme, setTimeTheme] = useState<'morning' | 'afternoon' | 'evening'>('morning');
 
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) setTimeTheme('morning');
+    else if (hour >= 12 && hour < 18) setTimeTheme('afternoon');
+    else setTimeTheme('evening');
+  }, []);
   useEffect(() => {
     if (user) {
       const orders = LocalDB.getOrders().filter(o => o.userId === user.id && o.status !== 'Entregue' && o.status !== 'Recusado');
       setActiveOrders(orders);
+      LocalDB.checkBirthdayCoupon(user.id);
     }
   }, [user]);
 
@@ -108,6 +121,15 @@ function AppContent() {
     setCart(prev => prev.filter(item => item.id !== productId));
   };
 
+  const reorder = (order: Order) => {
+    const newCart: CartItem[] = order.items.map(item => ({
+      ...item,
+      quantity: item.quantity
+    }));
+    setCart(newCart);
+    setIsCartOpen(true);
+  };
+
   const updateQuantity = (productId: string, delta: number) => {
     const product = products.find(p => p.id === productId);
     const settings = LocalDB.getSettings();
@@ -151,6 +173,9 @@ function AppContent() {
 
   const finalTotal = Math.max(0, cartTotal - discountAmount - pointsDiscount);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const freeDeliveryThreshold = 50;
+  const deliveryProgress = Math.min(100, (cartTotal / freeDeliveryThreshold) * 100);
+  const remainingForFreeDelivery = Math.max(0, freeDeliveryThreshold - cartTotal);
 
   const handleApplyCoupon = () => {
     setCouponError('');
@@ -208,6 +233,13 @@ function AppContent() {
     setUsePoints(false);
     setPointsDiscount(0);
     
+    confetti({
+      particleCount: 150,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ['#FF6B6B', '#FFE66D', '#4ECDC4']
+    });
+
     // Update active orders
     if (user) {
       setActiveOrders(prev => [...prev, newOrder]);
@@ -219,9 +251,13 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 font-sans text-stone-900">
+    <div className={`min-h-screen font-sans text-stone-900 transition-colors duration-1000 ${
+      timeTheme === 'morning' ? 'bg-[#F9F5F0]' : 
+      timeTheme === 'afternoon' ? 'bg-[#FFF9F0]' : 
+      'bg-[#F5F2ED]'
+    }`}>
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-stone-100">
+      <header className="sticky top-0 z-50 bg-white/70 backdrop-blur-xl border-b border-white/20">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 group">
             <div className="w-10 h-10 bg-brand-primary rounded-xl flex items-center justify-center text-brand-secondary shadow-lg shadow-brand-primary/20 group-hover:scale-110 transition-transform">
@@ -236,6 +272,73 @@ function AppContent() {
           </nav>
 
           <div className="flex items-center gap-4">
+            {user && (
+              <div className="relative">
+                <button 
+                  onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                  className="p-3 bg-stone-100 text-stone-600 rounded-2xl hover:bg-stone-200 transition-all relative group"
+                >
+                  <Bell size={24} />
+                  {user.notifications?.some(n => !n.isRead) && (
+                    <span className="absolute top-2 right-2 w-3 h-3 bg-red-500 border-2 border-white rounded-full animate-pulse" />
+                  )}
+                </button>
+                
+                <AnimatePresence>
+                  {isNotificationsOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 mt-3 w-80 bg-white rounded-3xl shadow-2xl border border-stone-100 py-4 z-50 overflow-hidden"
+                    >
+                      <div className="px-6 pb-4 border-b border-stone-50 flex justify-between items-center">
+                        <h3 className="font-black text-stone-900">Notificações</h3>
+                        <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Recentes</span>
+                      </div>
+                      <div className="max-h-96 overflow-y-auto custom-scrollbar">
+                        {user.notifications && user.notifications.length > 0 ? (
+                          user.notifications.map((notification) => (
+                            <button
+                              key={notification.id}
+                              onClick={() => {
+                                LocalDB.markNotificationAsRead(user.id, notification.id);
+                                setUser(LocalDB.getCurrentUser());
+                              }}
+                              className={`w-full px-6 py-4 text-left hover:bg-stone-50 transition-colors border-b border-stone-50 last:border-0 flex gap-4 ${!notification.isRead ? 'bg-brand-primary/5' : ''}`}
+                            >
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                                notification.type === 'order' ? 'bg-blue-50 text-blue-500' :
+                                notification.type === 'coupon' ? 'bg-emerald-50 text-emerald-500' :
+                                'bg-stone-50 text-stone-500'
+                              }`}>
+                                {notification.type === 'order' ? <Package size={18} /> :
+                                 notification.type === 'coupon' ? <Ticket size={18} /> :
+                                 <Bell size={18} />}
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-bold text-stone-900">{notification.title}</p>
+                                <p className="text-xs text-stone-500 line-clamp-2">{notification.message}</p>
+                                <p className="text-[10px] text-stone-400 mt-1 font-medium">{new Date(notification.createdAt).toLocaleDateString()}</p>
+                              </div>
+                              {!notification.isRead && (
+                                <div className="w-2 h-2 bg-brand-primary rounded-full mt-2" />
+                              )}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="p-12 text-center">
+                            <Bell size={32} className="mx-auto text-stone-200 mb-2" />
+                            <p className="text-sm text-stone-400 font-medium">Nenhuma notificação por aqui.</p>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+
             <button 
               onClick={() => setIsCartOpen(true)}
               className="relative p-3 bg-brand-secondary text-brand-primary rounded-2xl hover:bg-brand-primary hover:text-brand-secondary transition-all group"
@@ -318,7 +421,7 @@ function AppContent() {
           <Route path="/" element={<Home />} />
           <Route path="/produtos" element={<Products onAddToCart={addToCart} />} />
           <Route path="/admin" element={user?.isAdmin ? <Admin /> : <Home />} />
-          <Route path="/perfil" element={user ? <Profile user={user} onUpdate={setUser} /> : <Home />} />
+          <Route path="/perfil" element={user ? <Profile user={user} onUpdate={setUser} onReorder={reorder} /> : <Home />} />
         </Routes>
 
         {/* Active Order Tracking Widget */}
@@ -420,6 +523,25 @@ function AppContent() {
                             {activeOrders[0].status === 'Entregue' && 'Pedido entregue! Esperamos que você aproveite cada pedaço.'}
                           </p>
                         </div>
+
+                        {activeOrders[0].status === 'Em Trânsito' && (
+                          <div className="relative h-32 bg-stone-100 rounded-3xl overflow-hidden border border-stone-200">
+                            <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/light-v10/static/-46.6333,-23.5505,13/400x200?access_token=pk.eyJ1IjoiYWlzdHVkaW8iLCJhIjoiY2x0eGZ6eGZ6MGZ6eTJxbXp6eTJxbXp6ZSJ9')] bg-cover bg-center opacity-50" />
+                            <motion.div 
+                              animate={{ 
+                                x: [0, 100, 50, 150],
+                                y: [0, -20, 10, -30]
+                              }}
+                              transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-brand-primary"
+                            >
+                              <Truck size={24} className="drop-shadow-lg" />
+                            </motion.div>
+                            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full border border-stone-100 shadow-sm">
+                              <span className="text-[9px] font-black text-stone-900 uppercase tracking-widest">Entregador a caminho</span>
+                            </div>
+                          </div>
+                        )}
 
                         <button 
                           onClick={() => {
@@ -624,6 +746,25 @@ function AppContent() {
 
               {cart.length > 0 && (
                 <div className="p-6 md:p-8 bg-stone-50 border-t border-stone-100 space-y-6">
+                  {/* Free Delivery Progress */}
+                  <div className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-stone-400">Progresso Frete Grátis</span>
+                      <span className="text-[10px] font-black text-brand-primary">
+                        {remainingForFreeDelivery > 0 
+                          ? `Faltam R$ ${remainingForFreeDelivery.toFixed(2)}` 
+                          : 'Frete Grátis Liberado! 🎉'}
+                      </span>
+                    </div>
+                    <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${deliveryProgress}%` }}
+                        className="h-full bg-brand-primary shadow-[0_0_10px_rgba(255,107,107,0.3)]"
+                      />
+                    </div>
+                  </div>
+
                   <div className="space-y-3">
                     <div className="flex justify-between items-center text-stone-500 text-xs font-bold uppercase tracking-widest">
                       <span>Subtotal</span>
@@ -671,20 +812,23 @@ function AppContent() {
                           className="w-full bg-white border border-stone-100 rounded-2xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-brand-primary/20 outline-none text-xs font-bold uppercase"
                         />
                       </div>
-                      <button 
+                      <motion.button 
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={handleApplyCoupon}
                         className="bg-brand-secondary text-brand-primary px-6 rounded-2xl font-black hover:bg-brand-primary hover:text-brand-secondary transition-all text-xs uppercase tracking-widest"
                       >
                         Ok
-                      </button>
+                      </motion.button>
                     </div>
                     {couponError && <p className="text-[10px] text-red-500 font-bold ml-1">{couponError}</p>}
 
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-4 gap-2">
                       {[
                         { id: 'pix', icon: QrCode, label: 'Pix' },
                         { id: 'credit', icon: CreditCard, label: 'Cartão' },
-                        { id: 'cash', icon: Banknote, label: 'Dinheiro' }
+                        { id: 'cash', icon: Banknote, label: 'Dinheiro' },
+                        { id: 'apple', icon: Smartphone, label: 'Apple Pay' }
                       ].map(method => (
                         <button 
                           key={method.id}
@@ -692,9 +836,29 @@ function AppContent() {
                           className={`flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all ${paymentMethod === method.id ? 'bg-brand-primary/5 border-brand-primary text-brand-primary shadow-sm' : 'bg-white border-stone-100 text-stone-400 hover:border-stone-200'}`}
                         >
                           <method.icon size={18} />
-                          <span className="text-[9px] font-black uppercase tracking-widest">{method.label}</span>
+                          <span className="text-[8px] font-black uppercase tracking-widest">{method.label}</span>
                         </button>
                       ))}
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="bg-white p-4 rounded-2xl border border-stone-100">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <Clock size={16} className="text-stone-400" />
+                            <span className="text-xs font-black text-stone-900 uppercase tracking-widest">Entrega</span>
+                          </div>
+                          <select 
+                            className="text-xs font-bold text-brand-primary bg-transparent outline-none"
+                            onChange={(e) => setScheduledFor(e.target.value)}
+                          >
+                            <option value="">O mais rápido possível</option>
+                            <option value="today-18">Hoje, 18:00 - 19:00</option>
+                            <option value="today-19">Hoje, 19:00 - 20:00</option>
+                            <option value="tomorrow-10">Amanhã, 10:00 - 11:00</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
 
                     {paymentMethod === 'cash' && (
@@ -742,14 +906,16 @@ function AppContent() {
                       )}
                     </div>
 
-                    <button 
+                    <motion.button 
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={handleCheckout}
                       disabled={orderPlaced}
-                      className="w-full bg-brand-primary text-brand-secondary py-5 rounded-[32px] font-black text-lg shadow-xl shadow-brand-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                      className="w-full bg-brand-primary text-brand-secondary py-5 rounded-[32px] font-black text-lg shadow-xl shadow-brand-primary/20 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                     >
                       {orderPlaced ? 'Pedido Realizado! 🎉' : 'Finalizar Pedido'}
                       {!orderPlaced && <ChevronRight size={20} />}
-                    </button>
+                    </motion.button>
                   </div>
                 </div>
               )}
