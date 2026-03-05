@@ -12,64 +12,99 @@ const DB_KEYS = {
   DRIVERS: 'doce_entrega_drivers',
   SETTINGS: 'doce_entrega_settings',
   INGREDIENTS: 'doce_entrega_ingredients',
+  BANNERS: 'doce_entrega_banners',
+  FAVORITE_FOLDERS: 'doce_entrega_favorite_folders',
 };
 
 // Initial data if empty
-const INITIAL_CATEGORIES = ['Brigadeiros', 'Bolos', 'Tortas', 'Cookies', 'Gelados'];
+const INITIAL_CATEGORIES = ['Brigadeiros', 'Bolos', 'Tortas', 'Cookies', 'Gelados', 'Bebidas'];
 const INITIAL_COUPONS: Coupon[] = [
   {
     id: '1',
     code: 'DOCE20',
     discountType: 'percentage',
     discountValue: 20,
-    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    isActive: true
+  },
+  {
+    id: '2',
+    code: 'BEMVINDO',
+    discountType: 'fixed',
+    discountValue: 10,
+    expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
     isActive: true
   }
 ];
 const INITIAL_PRODUCTS: Product[] = [
   {
     id: '1',
-    name: 'Brigadeiro Gourmet',
-    description: 'Feito com o melhor chocolate belga e granulado artesanal.',
+    name: 'Brigadeiro Gourmet Belga',
+    description: 'Feito com o melhor chocolate belga Callebaut e granulado artesanal de chocolate amargo.',
     price: 4.50,
     image: 'https://picsum.photos/seed/brigadeiro/400/400',
     category: 'Brigadeiros',
     rating: 4.9,
-    deliveryTime: '20-30 min'
+    deliveryTime: '20-30 min',
+    stock: 100,
+    tags: ['mais-vendido', 'chocolate']
   },
   {
     id: '2',
-    name: 'Bolo de Cenoura',
-    description: 'Com cobertura de chocolate cremosa e massa fofinha.',
-    price: 12.00,
+    name: 'Bolo de Cenoura com Brigadeiro',
+    description: 'Massa fofinha de cenoura com uma camada generosa de brigadeiro artesanal cremoso.',
+    price: 15.00,
     image: 'https://picsum.photos/seed/cake/400/400',
     category: 'Bolos',
     rating: 4.8,
-    deliveryTime: '30-40 min'
+    deliveryTime: '30-40 min',
+    stock: 20,
+    tags: ['classico']
+  },
+  {
+    id: '3',
+    name: 'Torta de Limão Siciliano',
+    description: 'Base crocante de biscoito, creme de limão siciliano aveludado e merengue suíço maçaricado.',
+    price: 18.00,
+    image: 'https://picsum.photos/seed/lemon/400/400',
+    category: 'Tortas',
+    rating: 4.7,
+    deliveryTime: '25-35 min',
+    stock: 15,
+    tags: ['refrescante']
+  },
+  {
+    id: '4',
+    name: 'Cookie Double Chocolate',
+    description: 'Cookie americano autêntico com gotas de chocolate ao leite e meio amargo, crocante por fora e macio por dentro.',
+    price: 8.50,
+    image: 'https://picsum.photos/seed/cookie/400/400',
+    category: 'Cookies',
+    rating: 4.9,
+    deliveryTime: '15-25 min',
+    stock: 50,
+    tags: ['vegano']
   }
 ];
 
 export const LocalDB = {
-  // Products
-  getProducts: (): Product[] => {
-    const data = localStorage.getItem(DB_KEYS.PRODUCTS);
-    if (!data) {
-      localStorage.setItem(DB_KEYS.PRODUCTS, JSON.stringify(INITIAL_PRODUCTS));
-      return INITIAL_PRODUCTS;
-    }
-    return JSON.parse(data);
+  // Helper for localStorage
+  _get: <T>(key: string, defaultValue: T): T => {
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : defaultValue;
   },
-  
-  saveProducts: (products: Product[]) => {
-    localStorage.setItem(DB_KEYS.PRODUCTS, JSON.stringify(products));
+  _save: <T>(key: string, data: T) => {
+    localStorage.setItem(key, JSON.stringify(data));
   },
 
+  // Products
+  getProducts: (): Product[] => LocalDB._get(DB_KEYS.PRODUCTS, INITIAL_PRODUCTS),
+  saveProducts: (products: Product[]) => LocalDB._save(DB_KEYS.PRODUCTS, products),
   addProduct: (product: Product) => {
     const products = LocalDB.getProducts();
     products.push(product);
     LocalDB.saveProducts(products);
   },
-
   updateProduct: (updatedProduct: Product) => {
     const products = LocalDB.getProducts();
     const index = products.findIndex(p => p.id === updatedProduct.id);
@@ -78,29 +113,19 @@ export const LocalDB = {
       LocalDB.saveProducts(products);
     }
   },
-
   deleteProduct: (id: string) => {
     const products = LocalDB.getProducts();
-    const filtered = products.filter(p => p.id !== id);
-    LocalDB.saveProducts(filtered);
+    LocalDB.saveProducts(products.filter(p => p.id !== id));
   },
 
   // Ingredients
-  getIngredients: (): Ingredient[] => {
-    const data = localStorage.getItem(DB_KEYS.INGREDIENTS);
-    return data ? JSON.parse(data) : [];
-  },
-
-  saveIngredients: (ingredients: Ingredient[]) => {
-    localStorage.setItem(DB_KEYS.INGREDIENTS, JSON.stringify(ingredients));
-  },
-
+  getIngredients: (): Ingredient[] => LocalDB._get(DB_KEYS.INGREDIENTS, []),
+  saveIngredients: (ingredients: Ingredient[]) => LocalDB._save(DB_KEYS.INGREDIENTS, ingredients),
   addIngredient: (ingredient: Ingredient) => {
     const ingredients = LocalDB.getIngredients();
     ingredients.push(ingredient);
     LocalDB.saveIngredients(ingredients);
   },
-
   updateIngredient: (updatedIngredient: Ingredient) => {
     const ingredients = LocalDB.getIngredients();
     const index = ingredients.findIndex(i => i.id === updatedIngredient.id);
@@ -109,38 +134,23 @@ export const LocalDB = {
       LocalDB.saveIngredients(ingredients);
     }
   },
-
   deleteIngredient: (id: string) => {
     const ingredients = LocalDB.getIngredients();
-    const filtered = ingredients.filter(i => i.id !== id);
-    LocalDB.saveIngredients(filtered);
+    LocalDB.saveIngredients(ingredients.filter(i => i.id !== id));
   },
 
   // User Auth
-  getUsers: (): User[] => {
-    const data = localStorage.getItem(DB_KEYS.USERS);
-    return data ? JSON.parse(data) : [];
-  },
-
-  saveUsers: (users: User[]) => {
-    localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
-  },
-
+  getUsers: (): User[] => LocalDB._get(DB_KEYS.USERS, []),
+  saveUsers: (users: User[]) => LocalDB._save(DB_KEYS.USERS, users),
   registerUser: (user: User) => {
     const users = LocalDB.getUsers();
     users.push(user);
     LocalDB.saveUsers(users);
   },
-
-  getCurrentUser: (): User | null => {
-    const data = localStorage.getItem(DB_KEYS.CURRENT_USER);
-    return data ? JSON.parse(data) : null;
-  },
-
+  getCurrentUser: (): User | null => LocalDB._get(DB_KEYS.CURRENT_USER, null),
   setCurrentUser: (user: User | null) => {
     if (user) {
-      localStorage.setItem(DB_KEYS.CURRENT_USER, JSON.stringify(user));
-      // Also update in users list
+      LocalDB._save(DB_KEYS.CURRENT_USER, user);
       const users = LocalDB.getUsers();
       const index = users.findIndex(u => u.id === user.id);
       if (index !== -1) {
@@ -155,83 +165,44 @@ export const LocalDB = {
   toggleFavorite: (productId: string) => {
     const user = LocalDB.getCurrentUser();
     if (!user) return;
-    
     const favorites = user.favorites || [];
     const index = favorites.indexOf(productId);
-    
-    if (index === -1) {
-      favorites.push(productId);
-    } else {
-      favorites.splice(index, 1);
-    }
-    
+    if (index === -1) favorites.push(productId);
+    else favorites.splice(index, 1);
     LocalDB.setCurrentUser({ ...user, favorites });
   },
 
-  isFavorite: (productId: string): boolean => {
-    const user = LocalDB.getCurrentUser();
-    if (!user || !user.favorites) return false;
-    return user.favorites.includes(productId);
-  },
-
   // Cart
-  getCart: (): CartItem[] => {
-    const data = localStorage.getItem(DB_KEYS.CART);
-    return data ? JSON.parse(data) : [];
-  },
-
-  saveCart: (cart: CartItem[]) => {
-    localStorage.setItem(DB_KEYS.CART, JSON.stringify(cart));
-  },
+  getCart: (): CartItem[] => LocalDB._get(DB_KEYS.CART, []),
+  saveCart: (cart: CartItem[]) => LocalDB._save(DB_KEYS.CART, cart),
 
   // Orders
-  getOrders: (): Order[] => {
-    const data = localStorage.getItem(DB_KEYS.ORDERS);
-    return data ? JSON.parse(data) : [];
-  },
-
-  saveOrders: (orders: Order[]) => {
-    localStorage.setItem(DB_KEYS.ORDERS, JSON.stringify(orders));
-  },
-
+  getOrders: (): Order[] => LocalDB._get(DB_KEYS.ORDERS, []),
+  saveOrders: (orders: Order[]) => LocalDB._save(DB_KEYS.ORDERS, orders),
   addOrder: (order: Order) => {
     const orders = LocalDB.getOrders();
-    
-    // 5% chance for a Golden Ticket
     const isGoldenTicket = Math.random() < 0.05;
-    const orderWithGoldenTicket = { 
-      ...order, 
-      isGoldenTicket, 
-      goldenTicketClaimed: false 
-    };
-    
+    const orderWithGoldenTicket = { ...order, isGoldenTicket, goldenTicketClaimed: false };
     orders.push(orderWithGoldenTicket);
     LocalDB.saveOrders(orders);
 
-    // Handle Inventory and Loyalty if enabled
     const settings = LocalDB.getSettings();
-    
     if (settings.inventoryControl) {
       const products = LocalDB.getProducts();
       order.items.forEach(item => {
-        const productIndex = products.findIndex(p => p.id === item.id);
-        if (productIndex !== -1 && products[productIndex].stock !== undefined) {
-          products[productIndex].stock = Math.max(0, products[productIndex].stock! - item.quantity);
-        }
+        const p = products.find(p => p.id === item.id);
+        if (p && p.stock !== undefined) p.stock = Math.max(0, p.stock - item.quantity);
       });
       LocalDB.saveProducts(products);
     }
 
     if (settings.loyaltyProgram) {
       const users = LocalDB.getUsers();
-      const userIndex = users.findIndex(u => u.id === order.userId);
-      if (userIndex !== -1) {
-        let pointsEarned = Math.floor(order.total); // 1 point per R$ 1
-        
-        // Check for "Early Bird" mission (before 2 PM)
-        const now = new Date();
-        if (now.getHours() < 14) {
-          pointsEarned += 10;
+      const uIdx = users.findIndex(u => u.id === order.userId);
+      if (uIdx !== -1) {
+        let points = Math.floor(order.total);
+        if (new Date().getHours() < 14) {
+          points += 10;
           LocalDB.addNotification(order.userId, {
             id: Math.random().toString(36).substr(2, 9),
             title: '🎯 Missão Cumprida!',
@@ -241,46 +212,22 @@ export const LocalDB = {
             createdAt: new Date().toISOString()
           });
         }
-
-        users[userIndex].points = (users[userIndex].points || 0) + pointsEarned;
+        users[uIdx].points = (users[uIdx].points || 0) + points;
         LocalDB.saveUsers(users);
-        
-        // Update Tier
         LocalDB.updateLoyaltyTier(order.userId);
-        
-        // If current user is the one who ordered, update current user too
-        const currentUser = LocalDB.getCurrentUser();
-        if (currentUser && currentUser.id === order.userId) {
-          const updatedUser = LocalDB.getUsers().find(u => u.id === order.userId);
-          if (updatedUser) LocalDB.setCurrentUser(updatedUser);
-        }
-      }
-    }
-  },
-
-  updateUserPoints: (userId: string, points: number) => {
-    const users = LocalDB.getUsers();
-    const index = users.findIndex(u => u.id === userId);
-    if (index !== -1) {
-      users[index].points = points;
-      LocalDB.saveUsers(users);
-      
-      const currentUser = LocalDB.getCurrentUser();
-      if (currentUser && currentUser.id === userId) {
-        LocalDB.setCurrentUser({ ...currentUser, points });
+        const current = LocalDB.getCurrentUser();
+        if (current?.id === order.userId) LocalDB.setCurrentUser(users[uIdx]);
       }
     }
   },
 
   updateOrderStatus: (orderId: string, status: OrderStatus) => {
     const orders = LocalDB.getOrders();
-    const index = orders.findIndex(o => o.id === orderId);
-    if (index !== -1) {
-      orders[index].status = status;
+    const idx = orders.findIndex(o => o.id === orderId);
+    if (idx !== -1) {
+      orders[idx].status = status;
       LocalDB.saveOrders(orders);
-
-      // Send notification
-      LocalDB.addNotification(orders[index].userId, {
+      LocalDB.addNotification(orders[idx].userId, {
         id: Math.random().toString(36).substr(2, 9),
         title: 'Status do Pedido Atualizado',
         message: `Seu pedido #${orderId.slice(-6)} agora está: ${status}`,
@@ -291,43 +238,13 @@ export const LocalDB = {
     }
   },
 
-  // Stats
-  getStats: () => {
-    const orders = LocalDB.getOrders().filter(o => o.status === 'Entregue');
-    const users = LocalDB.getUsers();
-    const products = LocalDB.getProducts();
-    
-    return {
-      totalRevenue: orders.reduce((sum, o) => sum + o.total, 0),
-      orderCount: orders.length,
-      totalLoyaltyPoints: users.reduce((sum, u) => sum + (u.points || 0), 0),
-      totalInventoryStock: products.reduce((sum, p) => sum + (p.stock || 0), 0),
-    };
-  },
-
   // Categories
-  getCategories: (): string[] => {
-    const data = localStorage.getItem(DB_KEYS.CATEGORIES);
-    if (!data) {
-      localStorage.setItem(DB_KEYS.CATEGORIES, JSON.stringify(INITIAL_CATEGORIES));
-      return INITIAL_CATEGORIES;
-    }
-    return JSON.parse(data);
-  },
-
-  saveCategories: (categories: string[]) => {
-    localStorage.setItem(DB_KEYS.CATEGORIES, JSON.stringify(categories));
-  },
+  getCategories: (): string[] => LocalDB._get(DB_KEYS.CATEGORIES, INITIAL_CATEGORIES),
+  saveCategories: (categories: string[]) => LocalDB._save(DB_KEYS.CATEGORIES, categories),
 
   // Coupons
   getCoupons: (): Coupon[] => {
-    const data = localStorage.getItem(DB_KEYS.COUPONS);
-    if (!data) {
-      localStorage.setItem(DB_KEYS.COUPONS, JSON.stringify(INITIAL_COUPONS));
-      return INITIAL_COUPONS;
-    }
-    const coupons: Coupon[] = JSON.parse(data);
-    // Auto-deactivate expired coupons
+    const coupons = LocalDB._get(DB_KEYS.COUPONS, INITIAL_COUPONS);
     const now = new Date();
     let changed = false;
     const updated = coupons.map(c => {
@@ -340,127 +257,65 @@ export const LocalDB = {
     if (changed) LocalDB.saveCoupons(updated);
     return updated;
   },
-
-  saveCoupons: (coupons: Coupon[]) => {
-    localStorage.setItem(DB_KEYS.COUPONS, JSON.stringify(coupons));
-  },
-
+  saveCoupons: (coupons: Coupon[]) => LocalDB._save(DB_KEYS.COUPONS, coupons),
   addCoupon: (coupon: Coupon) => {
     const coupons = LocalDB.getCoupons();
     coupons.push(coupon);
     LocalDB.saveCoupons(coupons);
   },
-
-  deleteCoupon: (id: string) => {
-    const coupons = LocalDB.getCoupons();
-    const filtered = coupons.filter(c => c.id !== id);
-    LocalDB.saveCoupons(filtered);
-  },
-
+  deleteCoupon: (id: string) => LocalDB.saveCoupons(LocalDB.getCoupons().filter(c => c.id !== id)),
   validateCoupon: (code: string): Coupon | null => {
-    const coupons = LocalDB.getCoupons();
-    const coupon = coupons.find(c => c.code.toUpperCase() === code.toUpperCase() && c.isActive);
-    if (!coupon) return null;
-    if (new Date(coupon.expiresAt) < new Date()) return null;
-    return coupon;
+    const coupon = LocalDB.getCoupons().find(c => c.code.toUpperCase() === code.toUpperCase() && c.isActive);
+    return (coupon && new Date(coupon.expiresAt) >= new Date()) ? coupon : null;
   },
 
   // Reviews
   getReviews: (productId?: string): Review[] => {
-    const data = localStorage.getItem(DB_KEYS.REVIEWS);
-    const reviews: Review[] = data ? JSON.parse(data) : [
-      {
-        id: 'r1',
-        productId: '1',
-        userId: 'u1',
-        userName: 'Ana Silva',
-        rating: 5,
-        comment: 'Melhor brigadeiro que já comi! Super cremoso.',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'r2',
-        productId: '1',
-        userId: 'u2',
-        userName: 'João Santos',
-        rating: 4,
-        comment: 'Muito bom, mas achei um pouco pequeno.',
-        createdAt: new Date().toISOString()
-      }
-    ];
-    if (productId) {
-      return reviews.filter(r => r.productId === productId);
-    }
-    return reviews;
+    const reviews = LocalDB._get(DB_KEYS.REVIEWS, []);
+    return productId ? reviews.filter(r => r.productId === productId) : reviews;
   },
-
   addReview: (review: Review) => {
     const reviews = LocalDB.getReviews();
     reviews.push(review);
-    localStorage.setItem(DB_KEYS.REVIEWS, JSON.stringify(reviews));
+    LocalDB._save(DB_KEYS.REVIEWS, reviews);
   },
 
   // Drivers
-  getDrivers: (): Driver[] => {
-    const data = localStorage.getItem(DB_KEYS.DRIVERS);
-    return data ? JSON.parse(data) : [];
-  },
-
-  saveDrivers: (drivers: Driver[]) => {
-    localStorage.setItem(DB_KEYS.DRIVERS, JSON.stringify(drivers));
-  },
+  getDrivers: (): Driver[] => LocalDB._get(DB_KEYS.DRIVERS, []),
+  saveDrivers: (drivers: Driver[]) => LocalDB._save(DB_KEYS.DRIVERS, drivers),
 
   // Settings
-  getSettings: (): AppSettings => {
-    const data = localStorage.getItem(DB_KEYS.SETTINGS);
-    return data ? JSON.parse(data) : {
-      darkMode: false,
-      inventoryControl: true,
-      loyaltyProgram: true,
-      isStoreOpen: true,
-      banners: [
-        {
-          id: '1',
-          image: 'https://picsum.photos/seed/promo1/1200/400',
-          title: 'Festival de Brigadeiros',
-          subtitle: 'Leve 3, Pague 2 em todos os brigadeiros gourmet.',
-          isActive: true
-        }
-      ]
-    };
-  },
-
-  saveSettings: (settings: AppSettings) => {
-    localStorage.setItem(DB_KEYS.SETTINGS, JSON.stringify(settings));
-  },
-
-  toggleStoreStatus: () => {
-    const settings = LocalDB.getSettings();
-    settings.isStoreOpen = !settings.isStoreOpen;
-    LocalDB.saveSettings(settings);
-    return settings.isStoreOpen;
-  },
+  getSettings: (): AppSettings => LocalDB._get(DB_KEYS.SETTINGS, {
+    darkMode: false,
+    inventoryControl: true,
+    loyaltyProgram: true,
+    isStoreOpen: true,
+    banners: [
+      {
+        id: '1',
+        image: 'https://picsum.photos/seed/promo1/1200/400',
+        title: 'Festival de Brigadeiros',
+        subtitle: 'Leve 3, Pague 2 em todos os brigadeiros gourmet.',
+        isActive: true
+      }
+    ]
+  }),
+  saveSettings: (settings: AppSettings) => LocalDB._save(DB_KEYS.SETTINGS, settings),
 
   // Wallet
   updateWalletBalance: (userId: string, amount: number) => {
     const users = LocalDB.getUsers();
-    const index = users.findIndex(u => u.id === userId);
-    if (index !== -1) {
-      users[index].walletBalance = (users[index].walletBalance || 0) + amount;
+    const idx = users.findIndex(u => u.id === userId);
+    if (idx !== -1) {
+      users[idx].walletBalance = (users[idx].walletBalance || 0) + amount;
       LocalDB.saveUsers(users);
-      
-      const currentUser = LocalDB.getCurrentUser();
-      if (currentUser && currentUser.id === userId) {
-        LocalDB.setCurrentUser(users[index]);
-      }
+      const current = LocalDB.getCurrentUser();
+      if (current?.id === userId) LocalDB.setCurrentUser(users[idx]);
     }
   },
 
   // Banners
-  getBanners: (): AppBanner[] => {
-    return LocalDB.getSettings().banners || [];
-  },
-
+  getBanners: (): AppBanner[] => LocalDB.getSettings().banners || [],
   saveBanners: (banners: AppBanner[]) => {
     const settings = LocalDB.getSettings();
     settings.banners = banners;
@@ -468,45 +323,40 @@ export const LocalDB = {
   },
 
   // Favorite Folders
-  getFavoriteFolders: (userId: string): FavoriteFolder[] => {
+  getFavoriteFolders: (userId?: string): FavoriteFolder[] => {
+    if (!userId) return LocalDB._get(DB_KEYS.FAVORITE_FOLDERS, []);
     const users = LocalDB.getUsers();
-    const user = users.find(u => u.id === userId);
-    return user?.favoriteFolders || [];
+    return users.find(u => u.id === userId)?.favoriteFolders || [];
   },
-
-  saveFavoriteFolders: (userId: string, folders: FavoriteFolder[]) => {
+  saveFavoriteFolders: (folders: FavoriteFolder[], userId?: string) => {
+    if (!userId) {
+      LocalDB._save(DB_KEYS.FAVORITE_FOLDERS, folders);
+      return;
+    }
     const users = LocalDB.getUsers();
-    const index = users.findIndex(u => u.id === userId);
-    if (index !== -1) {
-      users[index].favoriteFolders = folders;
+    const idx = users.findIndex(u => u.id === userId);
+    if (idx !== -1) {
+      users[idx].favoriteFolders = folders;
       LocalDB.saveUsers(users);
-      
-      const currentUser = LocalDB.getCurrentUser();
-      if (currentUser && currentUser.id === userId) {
-        LocalDB.setCurrentUser(users[index]);
-      }
+      const current = LocalDB.getCurrentUser();
+      if (current?.id === userId) LocalDB.setCurrentUser(users[idx]);
     }
   },
 
   // Admin Reports
   getAbandonedCarts: () => {
-    // Simulated: Users with items in cart but no orders in last 24h
     const users = LocalDB.getUsers();
     const orders = LocalDB.getOrders();
-    const now = new Date();
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     return users.filter(u => {
-      const hasItems = LocalDB.getCart().length > 0; // Simplified: checking current cart
       const hasRecentOrder = orders.some(o => o.userId === u.id && new Date(o.createdAt) > oneDayAgo);
-      return hasItems && !hasRecentOrder;
+      return !hasRecentOrder; // Simplified
     });
   },
 
   getDeliveryHeatmap: () => {
-    const orders = LocalDB.getOrders();
     const heatmap: Record<string, number> = {};
-    orders.forEach(o => {
+    LocalDB.getOrders().forEach(o => {
       const neighborhood = o.address.split(',')[1]?.trim() || 'Outros';
       heatmap[neighborhood] = (heatmap[neighborhood] || 0) + 1;
     });
@@ -516,53 +366,16 @@ export const LocalDB = {
   getFinancialReport: () => {
     const orders = LocalDB.getOrders().filter(o => o.status === 'Entregue');
     const revenue = orders.reduce((sum, o) => sum + o.total, 0);
-    const cost = orders.reduce((sum, o) => {
-      return sum + o.items.reduce((iSum, item) => iSum + (item.costPrice || item.price * 0.4) * item.quantity, 0);
-    }, 0);
-    
-    return {
-      revenue,
-      cost,
-      profit: revenue - cost,
-      margin: ((revenue - cost) / revenue) * 100
-    };
-  },
-
-  updateWalletBalance: (userId: string, amount: number) => {
-    const users = LocalDB.getUsers();
-    const index = users.findIndex(u => u.id === userId);
-    if (index !== -1) {
-      users[index].walletBalance = (users[index].walletBalance || 0) + amount;
-      LocalDB.saveUsers(users);
-      
-      const currentUser = LocalDB.getCurrentUser();
-      if (currentUser && currentUser.id === userId) {
-        LocalDB.setCurrentUser(users[index]);
-      }
-    }
-  },
-
-  getFavoriteFolders: (): any[] => {
-    const folders = localStorage.getItem('favoriteFolders');
-    return folders ? JSON.parse(folders) : [];
-  },
-
-  saveFavoriteFolders: (folders: any[]) => {
-    localStorage.setItem('favoriteFolders', JSON.stringify(folders));
+    const cost = orders.reduce((sum, o) => sum + o.items.reduce((iSum, item) => iSum + (item.costPrice || item.price * 0.4) * item.quantity, 0), 0);
+    return { revenue, cost, profit: revenue - cost, margin: revenue ? ((revenue - cost) / revenue) * 100 : 0 };
   },
 
   // Referral
-  generateReferralCode: (userName: string): string => {
-    const prefix = userName.slice(0, 3).toUpperCase();
-    const random = Math.floor(1000 + Math.random() * 9000);
-    return `${prefix}${random}`;
-  },
-
+  generateReferralCode: (userName: string): string => `${userName.slice(0, 3).toUpperCase()}${Math.floor(1000 + Math.random() * 9000)}`,
   applyReferral: (code: string) => {
     const users = LocalDB.getUsers();
     const referrer = users.find(u => u.referralCode === code);
     if (referrer) {
-      // Give points to referrer
       referrer.points = (referrer.points || 0) + 50;
       LocalDB.saveUsers(users);
       return true;
@@ -570,173 +383,114 @@ export const LocalDB = {
     return false;
   },
 
-  redeemPoints: (userId: string, pointsToRedeem: number): boolean => {
+  redeemPoints: (userId: string, points: number): boolean => {
     const users = LocalDB.getUsers();
-    const userIndex = users.findIndex(u => u.id === userId);
-    if (userIndex !== -1 && (users[userIndex].points || 0) >= pointsToRedeem) {
-      users[userIndex].points = (users[userIndex].points || 0) - pointsToRedeem;
+    const idx = users.findIndex(u => u.id === userId);
+    if (idx !== -1 && (users[idx].points || 0) >= points) {
+      users[idx].points = (users[idx].points || 0) - points;
       LocalDB.saveUsers(users);
-      
-      const currentUser = LocalDB.getCurrentUser();
-      if (currentUser && currentUser.id === userId) {
-        LocalDB.setCurrentUser({ ...currentUser, points: users[userIndex].points });
-      }
+      const current = LocalDB.getCurrentUser();
+      if (current?.id === userId) LocalDB.setCurrentUser({ ...current, points: users[idx].points });
       return true;
     }
     return false;
   },
 
-  // Popular Products (Simulated based on orders)
+  // Popular Products
   getPopularProducts: (limit: number = 4): Product[] => {
-    const orders = LocalDB.getOrders();
-    const productCounts: Record<string, number> = {};
-    
-    orders.forEach(order => {
-      order.items.forEach(item => {
-        productCounts[item.id] = (productCounts[item.id] || 0) + item.quantity;
-      });
-    });
-
-    const products = LocalDB.getProducts();
-    const sorted = products
-      .map(p => ({ ...p, sales: productCounts[p.id] || 0 }))
-      .sort((a, b) => b.sales - a.sales);
-
-    return sorted.slice(0, limit);
+    const counts: Record<string, number> = {};
+    LocalDB.getOrders().forEach(o => o.items.forEach(i => counts[i.id] = (counts[i.id] || 0) + i.quantity));
+    return LocalDB.getProducts()
+      .map(p => ({ ...p, sales: counts[p.id] || 0 }))
+      .sort((a, b) => b.sales - a.sales)
+      .slice(0, limit);
   },
 
   // Addresses
   addAddress: (userId: string, address: SavedAddress) => {
     const users = LocalDB.getUsers();
-    const index = users.findIndex(u => u.id === userId);
-    if (index !== -1) {
-      if (!users[index].savedAddresses) users[index].savedAddresses = [];
-      users[index].savedAddresses!.push(address);
+    const idx = users.findIndex(u => u.id === userId);
+    if (idx !== -1) {
+      if (!users[idx].savedAddresses) users[idx].savedAddresses = [];
+      users[idx].savedAddresses!.push(address);
       LocalDB.saveUsers(users);
-      
-      const currentUser = LocalDB.getCurrentUser();
-      if (currentUser && currentUser.id === userId) {
-        LocalDB.setCurrentUser({ ...currentUser, savedAddresses: users[index].savedAddresses });
-      }
+      const current = LocalDB.getCurrentUser();
+      if (current?.id === userId) LocalDB.setCurrentUser({ ...current, savedAddresses: users[idx].savedAddresses });
     }
   },
-
   deleteAddress: (userId: string, addressId: string) => {
     const users = LocalDB.getUsers();
-    const index = users.findIndex(u => u.id === userId);
-    if (index !== -1 && users[index].savedAddresses) {
-      users[index].savedAddresses = users[index].savedAddresses!.filter(a => a.id !== addressId);
+    const idx = users.findIndex(u => u.id === userId);
+    if (idx !== -1 && users[idx].savedAddresses) {
+      users[idx].savedAddresses = users[idx].savedAddresses!.filter(a => a.id !== addressId);
       LocalDB.saveUsers(users);
-      
-      const currentUser = LocalDB.getCurrentUser();
-      if (currentUser && currentUser.id === userId) {
-        LocalDB.setCurrentUser({ ...currentUser, savedAddresses: users[index].savedAddresses });
-      }
+      const current = LocalDB.getCurrentUser();
+      if (current?.id === userId) LocalDB.setCurrentUser({ ...current, savedAddresses: users[idx].savedAddresses });
     }
   },
 
   // Notifications
   addNotification: (userId: string, notification: Notification) => {
     const users = LocalDB.getUsers();
-    const index = users.findIndex(u => u.id === userId);
-    if (index !== -1) {
-      if (!users[index].notifications) users[index].notifications = [];
-      users[index].notifications!.unshift(notification);
+    const idx = users.findIndex(u => u.id === userId);
+    if (idx !== -1) {
+      if (!users[idx].notifications) users[idx].notifications = [];
+      users[idx].notifications!.unshift(notification);
       LocalDB.saveUsers(users);
-      
-      const currentUser = LocalDB.getCurrentUser();
-      if (currentUser && currentUser.id === userId) {
-        LocalDB.setCurrentUser({ ...currentUser, notifications: users[index].notifications });
-      }
+      const current = LocalDB.getCurrentUser();
+      if (current?.id === userId) LocalDB.setCurrentUser({ ...current, notifications: users[idx].notifications });
     }
   },
-
   markNotificationAsRead: (userId: string, notificationId: string) => {
     const users = LocalDB.getUsers();
-    const index = users.findIndex(u => u.id === userId);
-    if (index !== -1 && users[index].notifications) {
-      const nIndex = users[index].notifications!.findIndex(n => n.id === notificationId);
-      if (nIndex !== -1) {
-        users[index].notifications![nIndex].isRead = true;
+    const idx = users.findIndex(u => u.id === userId);
+    if (idx !== -1 && users[idx].notifications) {
+      const nIdx = users[idx].notifications!.findIndex(n => n.id === notificationId);
+      if (nIdx !== -1) {
+        users[idx].notifications![nIdx].isRead = true;
         LocalDB.saveUsers(users);
-        
-        const currentUser = LocalDB.getCurrentUser();
-        if (currentUser && currentUser.id === userId) {
-          LocalDB.setCurrentUser({ ...currentUser, notifications: users[index].notifications });
-        }
+        const current = LocalDB.getCurrentUser();
+        if (current?.id === userId) LocalDB.setCurrentUser({ ...current, notifications: users[idx].notifications });
       }
     }
   },
 
   // Flash Sales
-  getFlashSales: (): Product[] => {
-    const products = LocalDB.getProducts();
-    const now = new Date();
-    return products.filter(p => p.flashSalePrice && p.flashSaleEnd && new Date(p.flashSaleEnd) > now);
-  },
+  getFlashSales: (): Product[] => LocalDB.getProducts().filter(p => p.flashSalePrice && p.flashSaleEnd && new Date(p.flashSaleEnd) > new Date()),
 
   // Missions
   getMissions: (): Mission[] => {
     const now = new Date();
-    const missions: Mission[] = [
-      {
-        id: 'early-bird',
-        title: 'Pássaro Madrugador',
-        description: 'Peça um doce antes das 14:00 para ganhar pontos extras!',
-        rewardPoints: 10,
-        isCompleted: false,
-        expiresAt: new Date(now.setHours(14, 0, 0, 0)).toISOString()
-      },
-      {
-        id: 'sweet-tooth',
-        title: 'Formiguinha',
-        description: 'Faça 3 pedidos em uma semana.',
-        rewardPoints: 50,
-        isCompleted: false,
-        expiresAt: new Date(now.setDate(now.getDate() + 7)).toISOString()
-      }
+    return [
+      { id: 'early-bird', title: 'Pássaro Madrugador', description: 'Peça um doce antes das 14:00 para ganhar pontos extras!', rewardPoints: 10, isCompleted: false, expiresAt: new Date(now.setHours(14, 0, 0, 0)).toISOString() },
+      { id: 'sweet-tooth', title: 'Formiguinha', description: 'Faça 3 pedidos em uma semana.', rewardPoints: 50, isCompleted: false, expiresAt: new Date(now.setDate(now.getDate() + 7)).toISOString() }
     ];
-    return missions;
   },
 
   // Subscription
   subscribeToSweetClub: (userId: string, plan: 'Mensal' | 'Anual') => {
     const users = LocalDB.getUsers();
-    const index = users.findIndex(u => u.id === userId);
-    if (index !== -1) {
-      const nextBox = new Date();
-      nextBox.setDate(nextBox.getDate() + 7);
-      users[index].subscription = {
-        plan,
-        status: 'Ativo',
-        nextBoxDate: nextBox.toISOString()
-      };
+    const idx = users.findIndex(u => u.id === userId);
+    if (idx !== -1) {
+      const next = new Date();
+      next.setDate(next.getDate() + 7);
+      users[idx].subscription = { plan, status: 'Ativo', nextBoxDate: next.toISOString() };
       LocalDB.saveUsers(users);
-      
-      const currentUser = LocalDB.getCurrentUser();
-      if (currentUser && currentUser.id === userId) {
-        LocalDB.setCurrentUser(users[index]);
-      }
+      const current = LocalDB.getCurrentUser();
+      if (current?.id === userId) LocalDB.setCurrentUser(users[idx]);
     }
   },
 
   // Loyalty Tiers
   updateLoyaltyTier: (userId: string) => {
     const users = LocalDB.getUsers();
-    const index = users.findIndex(u => u.id === userId);
-    if (index !== -1) {
-      const points = users[index].points || 0;
-      let tier: 'Bronze' | 'Prata' | 'Ouro' = 'Bronze';
-      if (points >= 1000) tier = 'Ouro';
-      else if (points >= 500) tier = 'Prata';
-      
-      users[index].loyaltyTier = tier;
+    const idx = users.findIndex(u => u.id === userId);
+    if (idx !== -1) {
+      const pts = users[idx].points || 0;
+      users[idx].loyaltyTier = pts >= 1000 ? 'Ouro' : pts >= 500 ? 'Prata' : 'Bronze';
       LocalDB.saveUsers(users);
-      
-      const currentUser = LocalDB.getCurrentUser();
-      if (currentUser && currentUser.id === userId) {
-        LocalDB.setCurrentUser(users[index]);
-      }
+      const current = LocalDB.getCurrentUser();
+      if (current?.id === userId) LocalDB.setCurrentUser(users[idx]);
     }
   },
 
@@ -744,32 +498,14 @@ export const LocalDB = {
   checkBirthdayCoupon: (userId: string) => {
     const user = LocalDB.getCurrentUser();
     if (!user || !user.birthday) return;
-    
     const today = new Date();
-    const birthday = new Date(user.birthday);
-    
-    if (today.getMonth() === birthday.getMonth() && today.getDate() === birthday.getDate()) {
-      const coupons = LocalDB.getCoupons();
-      const hasBdayCoupon = coupons.some(c => c.code === `BDAY-${user.id.slice(0, 4)}`);
-      
-      if (!hasBdayCoupon) {
-        const newCoupon: Coupon = {
-          id: `bday-${user.id}`,
-          code: `BDAY-${user.id.slice(0, 4)}`,
-          discountValue: 100,
-          discountType: 'fixed',
-          isActive: true,
-          expiresAt: new Date(today.setDate(today.getDate() + 7)).toISOString()
-        };
-        LocalDB.addCoupon(newCoupon);
-        LocalDB.addNotification(user.id, {
-          id: Math.random().toString(36).substr(2, 9),
-          title: '🎁 Feliz Aniversário!',
-          message: `Parabéns! Você ganhou um cupom de R$ 100 para comemorar seu dia: ${newCoupon.code}`,
-          type: 'order',
-          isRead: false,
-          createdAt: new Date().toISOString()
-        });
+    const bday = new Date(user.birthday);
+    if (today.getMonth() === bday.getMonth() && today.getDate() === bday.getDate()) {
+      const code = `BDAY-${user.id.slice(0, 4)}`;
+      if (!LocalDB.getCoupons().some(c => c.code === code)) {
+        const coupon: Coupon = { id: `bday-${user.id}`, code, discountValue: 100, discountType: 'fixed', isActive: true, expiresAt: new Date(today.setDate(today.getDate() + 7)).toISOString() };
+        LocalDB.addCoupon(coupon);
+        LocalDB.addNotification(user.id, { id: Math.random().toString(36).substr(2, 9), title: '🎁 Feliz Aniversário!', message: `Parabéns! Você ganhou um cupom de R$ 100: ${code}`, type: 'order', isRead: false, createdAt: new Date().toISOString() });
       }
     }
   },
@@ -777,19 +513,37 @@ export const LocalDB = {
   // Golden Ticket
   claimGoldenTicket: (orderId: string) => {
     const orders = LocalDB.getOrders();
-    const index = orders.findIndex(o => o.id === orderId);
-    if (index !== -1) {
-      orders[index].goldenTicketClaimed = true;
+    const idx = orders.findIndex(o => o.id === orderId);
+    if (idx !== -1) {
+      orders[idx].goldenTicketClaimed = true;
       LocalDB.saveOrders(orders);
     }
   },
 
-  getBanners: (): any[] => {
-    const banners = localStorage.getItem('banners');
-    return banners ? JSON.parse(banners) : [];
+  updateUserPoints: (userId: string, points: number) => {
+    const users = LocalDB.getUsers();
+    const updated = users.map(u => u.id === userId ? { ...u, points } : u);
+    LocalDB._save(DB_KEYS.USERS, updated);
+    
+    const currentUser = LocalDB.getCurrentUser();
+    if (currentUser?.id === userId) {
+      LocalDB.setCurrentUser({ ...currentUser, points });
+    }
   },
 
-  saveBanners: (banners: any[]) => {
-    localStorage.setItem('banners', JSON.stringify(banners));
-  }
+  getStats: () => {
+    const orders = LocalDB.getOrders();
+    const products = LocalDB.getProducts();
+    const users = LocalDB.getUsers();
+    const totalRevenue = orders.reduce((sum, o) => sum + o.total, 0);
+    const orderCount = orders.length;
+    const totalLoyaltyPoints = users.reduce((sum, u) => sum + (u.points || 0), 0);
+    const totalInventoryStock = products.reduce((sum, p) => sum + (p.stock || 0), 0);
+    return {
+      totalRevenue,
+      orderCount,
+      totalLoyaltyPoints,
+      totalInventoryStock
+    };
+  },
 };

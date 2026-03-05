@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, ShoppingBag, Star, Clock, Heart, X, Share2, MessageSquare, Camera, Plus, Minus, Package } from 'lucide-react';
+import { Search, ShoppingBag, Star, Clock, Heart, X, Share2, MessageSquare, Camera, Plus, Minus, Package, Sparkles } from 'lucide-react';
 import { Product, Review } from '../types';
 import { LocalDB } from '../services/localDB';
 
@@ -18,7 +18,7 @@ export default function Products({ onAddToCart }: ProductsPageProps) {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [productReviews, setProductReviews] = useState<Review[]>([]);
   const [quantity, setQuantity] = useState(1);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [selectedDietary, setSelectedDietary] = useState<string[]>([]);
   const [isComboBuilderOpen, setIsComboBuilderOpen] = useState(false);
@@ -36,10 +36,6 @@ export default function Products({ onAddToCart }: ProductsPageProps) {
     setCategories(['Todos', ...LocalDB.getCategories()]);
     const user = LocalDB.getCurrentUser();
     if (user) setUserFavorites(user.favorites || []);
-    
-    // Simulate loading for skeleton effect
-    const timer = setTimeout(() => setIsLoading(false), 1000);
-    return () => clearTimeout(timer);
   }, []);
 
   const allTags = useMemo(() => {
@@ -202,21 +198,8 @@ export default function Products({ onAddToCart }: ProductsPageProps) {
 
       {/* Products Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-        {isLoading ? (
-          Array.from({ length: 8 }).map((_, idx) => (
-            <div key={idx} className="bg-white rounded-[32px] p-4 border border-stone-100 space-y-4">
-              <div className="h-48 skeleton" />
-              <div className="h-6 w-2/3 skeleton" />
-              <div className="h-4 w-full skeleton" />
-              <div className="flex justify-between items-center pt-4">
-                <div className="h-6 w-20 skeleton" />
-                <div className="h-10 w-10 rounded-xl skeleton" />
-              </div>
-            </div>
-          ))
-        ) : (
-          <AnimatePresence mode="popLayout">
-            {filteredProducts.map((product) => (
+        <AnimatePresence mode="popLayout">
+          {filteredProducts.map((product) => (
             <motion.div
               layout
               key={product.id}
@@ -303,7 +286,6 @@ export default function Products({ onAddToCart }: ProductsPageProps) {
             </motion.div>
           ))}
           </AnimatePresence>
-        )}
       </div>
 
       {filteredProducts.length === 0 && !isLoading && (

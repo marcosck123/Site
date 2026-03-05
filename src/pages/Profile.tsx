@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User as UserIcon, Phone, Mail, MapPin, Save, CheckCircle, ShieldCheck, ArrowRight, X, Navigation, ShoppingBag, Clock, Truck, Star, ChevronRight, Ticket, Plus, Heart, Trash2, RefreshCcw, Gift, Sparkles, TrendingUp } from 'lucide-react';
+import { User as UserIcon, Phone, Mail, MapPin, Save, CheckCircle, ShieldCheck, ArrowRight, X, Navigation, ShoppingBag, Clock, Truck, Star, ChevronRight, Ticket, Plus, Heart, Trash2, RefreshCcw, Gift, Sparkles, TrendingUp, Users, Package, Minus } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { User, Order, Product } from '../types';
