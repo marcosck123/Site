@@ -61,6 +61,8 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
         setError('Este e-mail já está cadastrado.');
       } else if (errorCode === 'auth/weak-password') {
         setError('A senha deve ter pelo menos 6 caracteres.');
+      } else if (errorCode === 'firebase/config-missing') {
+        setError('Firebase não configurado no ambiente. Preencha as variáveis VITE_FIREBASE_* no .env.');
       } else {
         setError(`Erro: ${errorCode}`);
       }

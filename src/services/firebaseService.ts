@@ -19,12 +19,20 @@ import {
   deleteDoc,
   serverTimestamp
 } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { auth, db, isFirebaseConfigValid } from '../firebase';
 import { User, Product, Order, Coupon, AppSettings, Ingredient, WalletTransaction } from '../types';
+
+
+const ensureFirebaseAuthEnabled = () => {
+  if (!isFirebaseConfigValid) {
+    throw new Error('firebase/config-missing');
+  }
+};
 
 export const FirebaseService = {
   // Auth
   login: async (email: string, pass: string) => {
+    ensureFirebaseAuthEnabled();
     console.log('FirebaseService: Logging in...', email);
     const userCredential = await signInWithEmailAndPassword(auth, email, pass);
     console.log('FirebaseService: Fetching user doc from Firestore...', userCredential.user.uid);
@@ -33,6 +41,7 @@ export const FirebaseService = {
   },
 
   register: async (userData: Partial<User>, pass: string) => {
+    ensureFirebaseAuthEnabled();
     console.log('FirebaseService: Registering user in Auth...', userData.email);
     const userCredential = await createUserWithEmailAndPassword(auth, userData.email!, pass);
     

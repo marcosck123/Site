@@ -12,6 +12,14 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
+export const isFirebaseConfigValid = Object.values(firebaseConfig).every(Boolean);
+
+if (!isFirebaseConfigValid) {
+  console.warn(
+    '[Firebase] Variáveis VITE_FIREBASE_* não configuradas. Login/cadastro via Firebase Auth não funcionarão até preencher o .env.'
+  );
+}
+
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
