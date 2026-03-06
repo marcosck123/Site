@@ -32,6 +32,13 @@ export const FirebaseService = {
 
   register: async (userData: Partial<User>, pass: string) => {
     const userCredential = await createUserWithEmailAndPassword(auth, userData.email!, pass);
+    
+    // Update Auth Profile
+    await updateProfile(userCredential.user, {
+      displayName: userData.name,
+      photoURL: userData.avatar
+    });
+
     const newUser: User = {
       ...userData,
       id: userCredential.user.uid,

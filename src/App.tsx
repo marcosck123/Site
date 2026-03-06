@@ -29,8 +29,9 @@ import { Product, CartItem, User, Coupon, Order } from './types';
 import AuthModal from './components/AuthModal';
 import { LocalDB } from './services/localDB';
 import { FirebaseService } from './services/firebaseService';
-import { auth } from './firebase';
+import { auth, db } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import Admin from './pages/Admin';
 import Profile from './pages/Profile';
 import confetti from 'canvas-confetti';
@@ -80,23 +81,35 @@ function AppContent() {
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Fetch user data from Firestore if needed, or use LocalDB as cache
+        // Try to get from LocalDB first
         const users = LocalDB.getUsers();
         let user = users.find(u => u.id === firebaseUser.uid);
+        
         if (!user) {
-          // If not in LocalDB, try fetching from FirebaseService
-          // This handles cases where user registers on another device
-          // For now, we'll just use the firebaseUser info if available
-          user = {
-            id: firebaseUser.uid,
-            name: firebaseUser.displayName || 'Usuário',
-            email: firebaseUser.email || '',
-            isAdmin: firebaseUser.email === 'marcoseduardock@gmail.com',
-            avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.email}`
-          };
+          // Fetch from Firestore
+          try {
+            const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+            if (userDoc.exists()) {
+              user = userDoc.data() as User;
+            } else {
+              // Fallback
+              user = {
+                id: firebaseUser.uid,
+                name: firebaseUser.displayName || 'Usuário',
+                email: firebaseUser.email || '',
+                isAdmin: firebaseUser.email === 'marcoseduardock@gmail.com',
+                avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.email}`
+              };
+            }
+          } catch (error) {
+            console.error('Error fetching user doc:', error);
+          }
         }
-        setUser(user);
-        LocalDB.setCurrentUser(user);
+        
+        if (user) {
+          setUser(user);
+          LocalDB.setCurrentUser(user);
+        }
       } else {
         setUser(null);
         LocalDB.setCurrentUser(null);
