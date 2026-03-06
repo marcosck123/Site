@@ -20,7 +20,8 @@ import {
   CheckCircle,
   Bell,
   Smartphone,
-  Gift
+  Gift,
+  Wallet
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
@@ -195,6 +196,11 @@ function AppContent() {
   const handleCheckout = () => {
     if (!user) {
       setIsAuthModalOpen(true);
+      return;
+    }
+
+    if (paymentMethod === 'wallet' && (user.walletBalance || 0) < finalTotal) {
+      alert('Saldo insuficiente na carteira! Recarregue no seu perfil.');
       return;
     }
 
@@ -828,7 +834,7 @@ function AppContent() {
                         { id: 'pix', icon: QrCode, label: 'Pix' },
                         { id: 'credit', icon: CreditCard, label: 'Cartão' },
                         { id: 'cash', icon: Banknote, label: 'Dinheiro' },
-                        { id: 'apple', icon: Smartphone, label: 'Apple Pay' }
+                        { id: 'wallet', icon: Wallet, label: 'Carteira' }
                       ].map(method => (
                         <button 
                           key={method.id}

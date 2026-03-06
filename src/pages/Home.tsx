@@ -19,7 +19,7 @@ export default function Home() {
 
   useEffect(() => {
     const settings = LocalDB.getSettings();
-    setBanners(settings.banners.filter(b => b.isActive));
+    setBanners((settings.banners || []).filter(b => b.isActive));
     setFeaturedProducts(LocalDB.getPopularProducts(4));
     setFlashSaleProducts(LocalDB.getFlashSales().slice(0, 4));
     setCategories(LocalDB.getCategories().slice(0, 4));

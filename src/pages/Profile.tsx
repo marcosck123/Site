@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User as UserIcon, Phone, Mail, MapPin, Save, CheckCircle, ShieldCheck, ArrowRight, X, Navigation, ShoppingBag, Clock, Truck, Star, ChevronRight, Ticket, Plus, Heart, Trash2, RefreshCcw, Gift, Sparkles, TrendingUp, Users, Package, Minus } from 'lucide-react';
+import { User as UserIcon, Phone, Mail, MapPin, Save, CheckCircle, ShieldCheck, ArrowRight, X, Navigation, ShoppingBag, Clock, Truck, Star, ChevronRight, Ticket, Plus, Heart, Trash2, RefreshCcw, Gift, Sparkles, TrendingUp, Users, Package, Minus, Wallet, Camera } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { User, Order, Product } from '../types';
@@ -47,12 +47,23 @@ export default function Profile({ user, onUpdate, onReorder }: ProfileProps) {
   const [newAddressLabel, setNewAddressLabel] = useState('');
   const [newAddressText, setNewAddressText] = useState('');
 
+  const [isAddCreditsModalOpen, setIsAddCreditsModalOpen] = useState(false);
+  const [addCreditsAmount, setAddCreditsAmount] = useState('');
+  const [proofImage, setProofImage] = useState<string | null>(null);
+  const [walletTransactions, setWalletTransactions] = useState(LocalDB.getWalletTransactions(user.id).reverse());
+  const [isRequestingCredits, setIsRequestingCredits] = useState(false);
+  const [settings] = useState(LocalDB.getSettings());
+
   const reverseGeocode = async (lat: number, lng: number) => {
     try {
       const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
       const data = await response.json();
       if (data.display_name) {
-        setAddress(data.display_name);
+        if (activeTab === 'enderecos') {
+          setNewAddressText(data.display_name);
+        } else {
+          setAddress(data.display_name);
+        }
       }
     } catch (error) {
       console.error('Error reverse geocoding:', error);
@@ -102,6 +113,34 @@ export default function Profile({ user, onUpdate, onReorder }: ProfileProps) {
     onUpdate(updatedUser);
     setIsSuccess(true);
     setTimeout(() => setIsSuccess(false), 3000);
+  };
+
+  const handleRequestCredits = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addCreditsAmount || !proofImage) return;
+    
+    setIsRequestingCredits(true);
+    setTimeout(() => {
+      LocalDB.requestCredits(user.id, user.name, parseFloat(addCreditsAmount), proofImage);
+      setWalletTransactions(LocalDB.getWalletTransactions(user.id).reverse());
+      setIsAddCreditsModalOpen(false);
+      setAddCreditsAmount('');
+      setProofImage(null);
+      setIsRequestingCredits(false);
+      setIsSuccess(true);
+      setTimeout(() => setIsSuccess(false), 3000);
+    }, 1500);
+  };
+
+  const handleProofFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProofImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const startVerification = (type: 'email' | 'phone') => {
@@ -395,45 +434,35 @@ export default function Profile({ user, onUpdate, onReorder }: ProfileProps) {
 
               <div className="space-y-2">
                 <label className="text-xs font-black text-stone-500 uppercase tracking-wider ml-1">Endereço Principal</label>
-                <div className="relative">
-                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
-                  <input 
-                    type="text" 
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-brand-primary/20 outline-none transition-all"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between items-center mb-2">
-                  <label className="text-xs font-black text-stone-500 uppercase tracking-wider ml-1">Mapa de Entrega</label>
-                  <button 
-                    type="button"
-                    onClick={handleLocationClick}
-                    disabled={isLocating}
-                    className="text-[10px] font-black text-brand-primary uppercase tracking-widest flex items-center gap-1 hover:opacity-70 transition-opacity disabled:opacity-50"
-                  >
-                    <Navigation size={12} />
-                    {isLocating ? 'Localizando...' : 'Minha Localização'}
-                  </button>
-                </div>
-                <div className="h-64 rounded-[32px] overflow-hidden border border-stone-100 shadow-inner relative z-0">
-                  <MapContainer 
-                    center={coords} 
-                    zoom={13} 
-                    style={{ height: '100%', width: '100%' }}
-                    scrollWheelZoom={false}
-                  >
-                    <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
-                    <Marker position={coords} icon={defaultIcon} />
-                    <MapEvents />
-                    <ChangeView center={coords} />
-                  </MapContainer>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {user.savedAddresses && user.savedAddresses.length > 0 ? (
+                    user.savedAddresses.map((addr) => (
+                      <button
+                        key={addr.id}
+                        type="button"
+                        onClick={() => setAddress(addr.address)}
+                        className={`p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-1 ${
+                          address === addr.address 
+                            ? 'border-brand-primary bg-brand-primary/5 shadow-md' 
+                            : 'border-stone-100 bg-stone-50 hover:border-stone-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <MapPin size={14} className={address === addr.address ? 'text-brand-primary' : 'text-stone-400'} />
+                          <span className={`text-xs font-black uppercase tracking-wider ${address === addr.address ? 'text-brand-primary' : 'text-stone-600'}`}>
+                            {addr.label}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-stone-400 line-clamp-2 leading-tight">
+                          {addr.address}
+                        </p>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="col-span-full p-6 bg-stone-50 rounded-2xl border border-dashed border-stone-200 text-center">
+                      <p className="text-xs text-stone-400 italic">Nenhum endereço salvo. Adicione um na aba "Endereços".</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -659,7 +688,7 @@ export default function Profile({ user, onUpdate, onReorder }: ProfileProps) {
             <div className="bg-white p-8 rounded-[40px] shadow-sm border border-stone-100">
               <h3 className="text-xl font-display font-black text-stone-900 mb-6">Endereços Salvos</h3>
               
-              <form onSubmit={handleAddAddress} className="mb-8 p-6 bg-stone-50 rounded-3xl border border-stone-100 space-y-4">
+              <form onSubmit={handleAddAddress} className="mb-8 p-6 bg-stone-50 rounded-3xl border border-stone-100 space-y-6">
                 <p className="text-xs font-black text-stone-400 uppercase tracking-widest mb-2">Adicionar Novo Endereço</p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <input 
@@ -677,6 +706,38 @@ export default function Profile({ user, onUpdate, onReorder }: ProfileProps) {
                     className="md:col-span-2 bg-white border border-stone-200 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-brand-primary/20 outline-none"
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Selecione no Mapa</label>
+                    <button 
+                      type="button"
+                      onClick={handleLocationClick}
+                      disabled={isLocating}
+                      className="text-[10px] font-black text-brand-primary uppercase tracking-widest flex items-center gap-1 hover:opacity-70 transition-opacity disabled:opacity-50"
+                    >
+                      <Navigation size={12} />
+                      {isLocating ? 'Localizando...' : 'Minha Localização'}
+                    </button>
+                  </div>
+                  <div className="h-64 rounded-3xl overflow-hidden border border-stone-200 shadow-inner relative z-0">
+                    <MapContainer 
+                      center={coords} 
+                      zoom={13} 
+                      style={{ height: '100%', width: '100%' }}
+                      scrollWheelZoom={false}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <Marker position={coords} icon={defaultIcon} />
+                      <MapEvents />
+                      <ChangeView center={coords} />
+                    </MapContainer>
+                  </div>
+                </div>
+
                 <button 
                   type="submit"
                   className="w-full bg-brand-primary text-brand-secondary py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 hover:scale-[1.02] transition-all"
@@ -843,7 +904,10 @@ export default function Profile({ user, onUpdate, onReorder }: ProfileProps) {
                 <p className="text-xs font-black uppercase tracking-widest opacity-60 mb-2">Saldo Disponível</p>
                 <h2 className="text-5xl font-display font-black mb-8">R$ {user.walletBalance?.toFixed(2) || '0,00'}</h2>
                 <div className="flex gap-4">
-                  <button className="bg-brand-primary text-brand-secondary px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-105 transition-all shadow-xl">
+                  <button 
+                    onClick={() => setIsAddCreditsModalOpen(true)}
+                    className="bg-brand-primary text-brand-secondary px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
+                  >
                     Adicionar Créditos
                   </button>
                   <button className="bg-white/50 backdrop-blur-md text-brand-primary px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-105 transition-all">
@@ -856,30 +920,42 @@ export default function Profile({ user, onUpdate, onReorder }: ProfileProps) {
             <div className="bg-white p-8 rounded-[40px] shadow-sm border border-stone-100">
               <h3 className="text-xl font-display font-black text-stone-900 mb-6">Últimas Transações</h3>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-stone-50 rounded-2xl border border-stone-100">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-emerald-50 text-emerald-500 rounded-xl flex items-center justify-center">
-                      <Plus size={20} />
+                {walletTransactions.length > 0 ? (
+                  walletTransactions.map((tx) => (
+                    <div key={tx.id} className="flex items-center justify-between p-4 bg-stone-50 rounded-2xl border border-stone-100">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                          tx.type === 'credit' 
+                            ? tx.status === 'approved' ? 'bg-emerald-50 text-emerald-500' : 'bg-amber-50 text-amber-500'
+                            : 'bg-red-50 text-red-500'
+                        }`}>
+                          {tx.type === 'credit' ? <Plus size={20} /> : <Minus size={20} />}
+                        </div>
+                        <div>
+                          <p className="font-bold text-stone-900 text-sm">{tx.description}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-[10px] text-stone-400 font-bold uppercase">
+                              {new Date(tx.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </p>
+                            {tx.status === 'pending' && (
+                              <span className="text-[8px] bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-full font-black uppercase">Pendente</span>
+                            )}
+                            {tx.status === 'rejected' && (
+                              <span className="text-[8px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full font-black uppercase">Recusado</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <span className={`font-black ${tx.type === 'credit' ? 'text-emerald-500' : 'text-red-500'}`}>
+                        {tx.type === 'credit' ? '+' : '-'} R$ {tx.amount.toFixed(2)}
+                      </span>
                     </div>
-                    <div>
-                      <p className="font-bold text-stone-900 text-sm">Bônus de Indicação</p>
-                      <p className="text-[10px] text-stone-400 font-bold uppercase">12 Out 2023</p>
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-stone-400 text-sm italic">Nenhuma transação encontrada.</p>
                   </div>
-                  <span className="text-emerald-500 font-black">+ R$ 10,00</span>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-stone-50 rounded-2xl border border-stone-100">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center">
-                      <Minus size={20} />
-                    </div>
-                    <div>
-                      <p className="font-bold text-stone-900 text-sm">Pagamento de Pedido #1234</p>
-                      <p className="text-[10px] text-stone-400 font-bold uppercase">10 Out 2023</p>
-                    </div>
-                  </div>
-                  <span className="text-red-500 font-black">- R$ 45,90</span>
-                </div>
+                )}
               </div>
             </div>
           </motion.div>
@@ -888,6 +964,112 @@ export default function Profile({ user, onUpdate, onReorder }: ProfileProps) {
 
       {/* Verification Modal */}
       <AnimatePresence>
+        {isAddCreditsModalOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAddCreditsModalOpen(false)}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-white rounded-[40px] shadow-2xl z-[110] overflow-hidden p-10"
+            >
+              <button 
+                onClick={() => setIsAddCreditsModalOpen(false)}
+                className="absolute right-6 top-6 text-stone-400 hover:text-stone-600"
+              >
+                <X size={24} />
+              </button>
+
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-brand-secondary rounded-2xl flex items-center justify-center text-brand-primary mx-auto mb-4">
+                  <Plus size={32} />
+                </div>
+                <h2 className="text-2xl font-black text-stone-900">Adicionar Créditos</h2>
+                <p className="text-stone-500 text-sm">Transfira via PIX e envie o comprovante</p>
+              </div>
+
+              <form onSubmit={handleRequestCredits} className="space-y-6">
+                <div className="bg-stone-50 p-6 rounded-3xl border border-stone-100 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-black text-stone-400 uppercase tracking-widest">Chave PIX (Admin)</span>
+                    <span className="text-xs font-bold text-brand-primary">{settings.pixKey || 'Não configurada'}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-black text-stone-400 uppercase tracking-widest">Beneficiário</span>
+                    <span className="text-xs font-bold text-brand-primary">{settings.pixName || 'Não configurado'}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-stone-500 uppercase tracking-wider ml-1">Valor da Recarga (R$)</label>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    required
+                    value={addCreditsAmount}
+                    onChange={(e) => setAddCreditsAmount(e.target.value)}
+                    placeholder="Ex: 50,00"
+                    className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-4 px-6 focus:ring-2 focus:ring-brand-primary/20 outline-none font-bold text-lg"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-stone-500 uppercase tracking-wider ml-1">Comprovante (Imagem)</label>
+                  <div className="relative">
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      required
+                      onChange={handleProofFileChange}
+                      className="hidden"
+                      id="proof-upload"
+                    />
+                    <label 
+                      htmlFor="proof-upload"
+                      className={`w-full flex flex-col items-center justify-center gap-3 py-8 border-2 border-dashed rounded-3xl cursor-pointer transition-all ${
+                        proofImage ? 'border-emerald-200 bg-emerald-50 text-emerald-600' : 'border-stone-200 bg-stone-50 text-stone-400 hover:border-brand-primary hover:bg-brand-primary/5'
+                      }`}
+                    >
+                      {proofImage ? (
+                        <>
+                          <CheckCircle size={32} />
+                          <span className="text-xs font-bold uppercase tracking-widest">Comprovante Selecionado</span>
+                        </>
+                      ) : (
+                        <>
+                          <Camera size={32} />
+                          <span className="text-xs font-bold uppercase tracking-widest">Clique para enviar foto</span>
+                        </>
+                      )}
+                    </label>
+                  </div>
+                </div>
+
+                <button 
+                  type="submit"
+                  disabled={isRequestingCredits}
+                  className="w-full bg-brand-primary text-brand-secondary py-5 rounded-2xl font-black text-lg shadow-xl shadow-brand-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                >
+                  {isRequestingCredits ? (
+                    <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Save size={24} />
+                      Solicitar Créditos
+                    </>
+                  )}
+                </button>
+              </form>
+            </motion.div>
+          </>
+        )}
+
         {isVerifying && (
           <>
             <motion.div

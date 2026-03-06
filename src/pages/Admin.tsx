@@ -31,9 +31,11 @@ import {
   Moon,
   Sun,
   Download,
-  Star
+  Star,
+  Menu,
+  Search
 } from 'lucide-react';
-import { Product, Order, OrderStatus, Coupon, Driver, AppSettings, Ingredient } from '../types';
+import { Product, Order, OrderStatus, Coupon, Driver, AppSettings, Ingredient, WalletTransaction } from '../types';
 import { LocalDB } from '../services/localDB';
 import { exportOrdersToPDF, exportOrdersToExcel } from '../utils/reports';
 import { useTheme } from '../ThemeContext';
@@ -53,7 +55,7 @@ import {
 
 export default function Admin() {
   const { theme, toggleTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'monitor' | 'products' | 'categories' | 'coupons' | 'drivers' | 'settings' | 'users' | 'inventory' | 'banners'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'monitor' | 'products' | 'categories' | 'coupons' | 'drivers' | 'settings' | 'users' | 'inventory' | 'banners' | 'wallet'>('dashboard');
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -61,12 +63,14 @@ export default function Admin() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [walletTransactions, setWalletTransactions] = useState<any[]>(LocalDB.getWalletTransactions());
   const [settings, setSettings] = useState<AppSettings>(LocalDB.getSettings());
   const [newCategory, setNewCategory] = useState('');
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
   const [isDriverModalOpen, setIsDriverModalOpen] = useState(false);
   const [isIngredientModalOpen, setIsIngredientModalOpen] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
 
@@ -120,6 +124,7 @@ export default function Admin() {
     setDrivers(LocalDB.getDrivers());
     setIngredients(LocalDB.getIngredients());
     setSettings(LocalDB.getSettings());
+    setWalletTransactions(LocalDB.getWalletTransactions());
     const cats = LocalDB.getCategories();
     setCategories(cats);
     if (cats.length > 0) {
@@ -333,6 +338,17 @@ export default function Admin() {
     LocalDB.saveOrders(updatedOrders);
   };
 
+  const handleApproveWallet = (id: string) => {
+    LocalDB.approveCreditRequest(id);
+    setWalletTransactions(LocalDB.getWalletTransactions());
+    setUsers(LocalDB.getUsers());
+  };
+
+  const handleRejectWallet = (id: string) => {
+    LocalDB.rejectCreditRequest(id);
+    setWalletTransactions(LocalDB.getWalletTransactions());
+  };
+
   const handlePrintOrder = (order: Order) => {
     const printWindow = window.open('', '_blank');
     if (printWindow) {
@@ -485,6 +501,12 @@ export default function Admin() {
           >
             <ImageIcon size={20} /> Banners
           </button>
+          <button 
+            onClick={() => setActiveTab('wallet')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'wallet' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
+          >
+            <CreditCard size={20} /> Carteira
+          </button>
         </nav>
 
         <div className="mt-auto pt-6 border-t border-white/10">
@@ -500,63 +522,160 @@ export default function Admin() {
 
       {/* Mobile Header */}
       <header className="md:hidden bg-brand-primary text-brand-secondary p-4 sticky top-0 z-50 flex items-center justify-between shadow-lg">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-brand-secondary rounded-lg flex items-center justify-center text-brand-primary">
-            <ShoppingBag size={18} />
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setIsMobileSidebarOpen(true)}
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+          >
+            <Menu size={24} />
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-brand-secondary rounded-lg flex items-center justify-center text-brand-primary">
+              <ShoppingBag size={18} />
+            </div>
+            <span className="text-lg font-black tracking-tighter uppercase">{activeTab}</span>
           </div>
-          <span className="text-lg font-black tracking-tighter uppercase">{activeTab}</span>
         </div>
-        <nav className="flex gap-2">
+        <div className="flex items-center gap-2">
           <button 
             onClick={() => setActiveTab('dashboard')}
             className={`p-2 rounded-lg transition-all ${activeTab === 'dashboard' ? 'bg-brand-secondary text-brand-primary' : 'text-brand-secondary/60'}`}
           >
             <LayoutDashboard size={20} />
           </button>
-          <button 
-            onClick={() => setActiveTab('orders')}
-            className={`p-2 rounded-lg transition-all ${activeTab === 'orders' ? 'bg-brand-secondary text-brand-primary' : 'text-brand-secondary/60'}`}
-          >
-            <ShoppingBag size={20} />
-          </button>
-          <button 
-            onClick={() => setActiveTab('products')}
-            className={`p-2 rounded-lg transition-all ${activeTab === 'products' ? 'bg-brand-secondary text-brand-primary' : 'text-brand-secondary/60'}`}
-          >
-            <Package size={20} />
-          </button>
-          <button 
-            onClick={() => setActiveTab('inventory')}
-            className={`p-2 rounded-lg transition-all ${activeTab === 'inventory' ? 'bg-brand-secondary text-brand-primary' : 'text-brand-secondary/60'}`}
-          >
-            <Package size={20} className="text-orange-400" />
-          </button>
-          <button 
-            onClick={() => setActiveTab('categories')}
-            className={`p-2 rounded-lg transition-all ${activeTab === 'categories' ? 'bg-brand-secondary text-brand-primary' : 'text-brand-secondary/60'}`}
-          >
-            <Tag size={20} />
-          </button>
-          <button 
-            onClick={() => setActiveTab('coupons')}
-            className={`p-2 rounded-lg transition-all ${activeTab === 'coupons' ? 'bg-brand-secondary text-brand-primary' : 'text-brand-secondary/60'}`}
-          >
-            <Ticket size={20} />
-          </button>
-          <button 
-            onClick={() => setActiveTab('users')}
-            className={`p-2 rounded-lg transition-all ${activeTab === 'users' ? 'bg-brand-secondary text-brand-primary' : 'text-brand-secondary/60'}`}
-          >
-            <Users size={20} />
-          </button>
-          <button 
-            onClick={() => setActiveTab('settings')}
-            className={`p-2 rounded-lg transition-all ${activeTab === 'settings' ? 'bg-brand-secondary text-brand-primary' : 'text-brand-secondary/60'}`}
-          >
-            <Settings size={20} />
-          </button>
-        </nav>
+        </div>
       </header>
+
+      {/* Mobile Sidebar (Drawer) */}
+      <AnimatePresence>
+        {isMobileSidebarOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileSidebarOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] md:hidden"
+            />
+            <motion.aside
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed left-0 top-0 bottom-0 w-72 bg-brand-primary text-brand-secondary z-[70] p-6 flex flex-col gap-6 md:hidden shadow-2xl"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 bg-brand-secondary rounded-xl flex items-center justify-center text-brand-primary">
+                    <ShoppingBag size={24} />
+                  </div>
+                  <span className="text-xl font-black tracking-tighter">ADMIN</span>
+                </div>
+                <button 
+                  onClick={() => setIsMobileSidebarOpen(false)}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="relative">
+                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
+                <input 
+                  type="text" 
+                  placeholder="Pesquisar menu..."
+                  className="w-full bg-white/10 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-sm font-bold outline-none focus:ring-2 focus:ring-brand-secondary/20 transition-all"
+                />
+              </div>
+
+              <nav className="flex flex-col gap-1 overflow-y-auto pr-2 custom-scrollbar">
+                <button 
+                  onClick={() => { setActiveTab('dashboard'); setIsMobileSidebarOpen(false); }}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'dashboard' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
+                >
+                  <LayoutDashboard size={20} /> Dashboard
+                </button>
+                <button 
+                  onClick={() => { setActiveTab('orders'); setIsMobileSidebarOpen(false); }}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'orders' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
+                >
+                  <ShoppingBag size={20} /> Pedidos
+                </button>
+                <button 
+                  onClick={() => { setActiveTab('monitor'); setIsMobileSidebarOpen(false); }}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'monitor' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
+                >
+                  <LayoutDashboard size={20} className="text-emerald-400" /> Monitor Cozinha
+                </button>
+                <button 
+                  onClick={() => { setActiveTab('products'); setIsMobileSidebarOpen(false); }}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'products' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
+                >
+                  <Package size={20} /> Produtos
+                </button>
+                <button 
+                  onClick={() => { setActiveTab('inventory'); setIsMobileSidebarOpen(false); }}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'inventory' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
+                >
+                  <Package size={20} className="text-orange-400" /> Estoque
+                </button>
+                <button 
+                  onClick={() => { setActiveTab('categories'); setIsMobileSidebarOpen(false); }}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'categories' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
+                >
+                  <Tag size={20} /> Categorias
+                </button>
+                <button 
+                  onClick={() => { setActiveTab('coupons'); setIsMobileSidebarOpen(false); }}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'coupons' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
+                >
+                  <Ticket size={20} /> Cupons
+                </button>
+                <button 
+                  onClick={() => { setActiveTab('drivers'); setIsMobileSidebarOpen(false); }}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'drivers' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
+                >
+                  <Truck size={20} /> Entregadores
+                </button>
+                <button 
+                  onClick={() => { setActiveTab('users'); setIsMobileSidebarOpen(false); }}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'users' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
+                >
+                  <Users size={20} /> Usuários
+                </button>
+                <button 
+                  onClick={() => { setActiveTab('settings'); setIsMobileSidebarOpen(false); }}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'settings' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
+                >
+                  <Settings size={20} /> Configurações
+                </button>
+                <button 
+                  onClick={() => { setActiveTab('banners'); setIsMobileSidebarOpen(false); }}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'banners' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
+                >
+                  <ImageIcon size={20} /> Banners
+                </button>
+                <button 
+                  onClick={() => { setActiveTab('wallet'); setIsMobileSidebarOpen(false); }}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'wallet' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
+                >
+                  <CreditCard size={20} /> Carteira
+                </button>
+              </nav>
+
+              <div className="mt-auto pt-6 border-t border-white/10">
+                <button 
+                  onClick={toggleTheme}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all hover:bg-white/10 w-full"
+                >
+                  {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                  {theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
+                </button>
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-10 overflow-y-auto">
@@ -1471,6 +1590,49 @@ export default function Admin() {
                   <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${settings.loyaltyProgram ? 'right-1' : 'left-1'}`} />
                 </button>
               </div>
+
+              <div className="bg-white p-8 rounded-[32px] shadow-sm border border-stone-100 space-y-6">
+                <div className="flex items-center gap-4 mb-2">
+                  <div className="w-12 h-12 bg-stone-50 text-stone-500 rounded-2xl flex items-center justify-center">
+                    <QrCode size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-stone-900">Dados PIX para Carteira</h4>
+                    <p className="text-sm text-stone-500">Configure os dados para recebimento de recargas</p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-stone-500 uppercase tracking-wider ml-1">Chave PIX</label>
+                    <input 
+                      type="text" 
+                      value={settings.pixKey || ''}
+                      onChange={e => {
+                        const newSettings = { ...settings, pixKey: e.target.value };
+                        setSettings(newSettings);
+                        LocalDB.saveSettings(newSettings);
+                      }}
+                      placeholder="Ex: CNPJ, E-mail ou Celular"
+                      className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none font-bold"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-stone-500 uppercase tracking-wider ml-1">Nome do Beneficiário</label>
+                    <input 
+                      type="text" 
+                      value={settings.pixName || ''}
+                      onChange={e => {
+                        const newSettings = { ...settings, pixName: e.target.value };
+                        setSettings(newSettings);
+                        LocalDB.saveSettings(newSettings);
+                      }}
+                      placeholder="Nome completo ou Razão Social"
+                      className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none font-bold"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -1573,6 +1735,139 @@ export default function Admin() {
               ))}
             </div>
           </div>
+        )}
+
+        {activeTab === 'wallet' && (
+          <motion.div
+            key="wallet"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-8"
+          >
+            <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                <h1 className="text-3xl font-black text-stone-900">Solicitações de Crédito</h1>
+                <p className="text-stone-500">Aprove ou recuse recargas de carteira via PIX</p>
+              </div>
+            </header>
+
+            <div className="grid grid-cols-1 gap-6">
+              {walletTransactions.filter(tx => tx.type === 'credit' && tx.status === 'pending').length > 0 ? (
+                walletTransactions.filter(tx => tx.type === 'credit' && tx.status === 'pending').map((tx) => (
+                  <div key={tx.id} className="bg-white p-8 rounded-[40px] shadow-sm border border-stone-100 flex flex-col md:flex-row gap-8">
+                    <div className="w-full md:w-64 h-80 rounded-3xl overflow-hidden border border-stone-100 bg-stone-50 flex items-center justify-center relative group">
+                      {tx.proofImage ? (
+                        <>
+                          <img src={tx.proofImage} alt="Comprovante" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <button 
+                              onClick={() => window.open(tx.proofImage, '_blank')}
+                              className="bg-white text-stone-900 px-4 py-2 rounded-xl font-bold text-xs"
+                            >
+                              Ver em tela cheia
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-center p-6">
+                          <ImageIcon size={48} className="text-stone-200 mx-auto mb-2" />
+                          <p className="text-xs text-stone-400 font-bold uppercase">Sem Comprovante</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 space-y-6">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="text-2xl font-black text-stone-900">{tx.userName}</h3>
+                          <p className="text-stone-500">ID do Usuário: {tx.userId}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-3xl font-black text-brand-primary">R$ {tx.amount.toFixed(2)}</p>
+                          <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">Valor Solicitado</p>
+                        </div>
+                      </div>
+
+                      <div className="bg-stone-50 p-6 rounded-3xl border border-stone-100">
+                        <div className="flex items-center gap-3 text-stone-600 mb-2">
+                          <Calendar size={18} />
+                          <span className="font-bold">Solicitado em:</span>
+                        </div>
+                        <p className="text-lg font-black text-stone-900">
+                          {new Date(tx.createdAt).toLocaleString('pt-BR')}
+                        </p>
+                      </div>
+
+                      <div className="flex gap-4">
+                        <button 
+                          onClick={() => handleApproveWallet(tx.id)}
+                          className="flex-1 bg-emerald-500 text-white py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20"
+                        >
+                          <Check size={20} /> APROVAR CRÉDITO
+                        </button>
+                        <button 
+                          onClick={() => handleRejectWallet(tx.id)}
+                          className="flex-1 bg-red-50 text-red-500 py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 hover:bg-red-500 hover:text-white transition-all border border-red-100"
+                        >
+                          <X size={20} /> RECUSAR
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="bg-white p-20 rounded-[40px] shadow-sm border border-stone-100 text-center">
+                  <div className="w-20 h-20 bg-stone-50 text-stone-200 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                    <CreditCard size={40} />
+                  </div>
+                  <h3 className="text-2xl font-black text-stone-900 mb-2">Tudo em dia!</h3>
+                  <p className="text-stone-500">Não há solicitações de crédito pendentes no momento.</p>
+                </div>
+              )}
+
+              {/* History Section */}
+              <div className="mt-12">
+                <h3 className="text-xl font-black text-stone-900 mb-6">Histórico Recente</h3>
+                <div className="bg-white rounded-[40px] shadow-sm border border-stone-100 overflow-hidden">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="bg-stone-50 border-b border-stone-100">
+                        <th className="px-8 py-4 text-[10px] font-black text-stone-400 uppercase tracking-widest">Usuário</th>
+                        <th className="px-8 py-4 text-[10px] font-black text-stone-400 uppercase tracking-widest">Valor</th>
+                        <th className="px-8 py-4 text-[10px] font-black text-stone-400 uppercase tracking-widest">Data</th>
+                        <th className="px-8 py-4 text-[10px] font-black text-stone-400 uppercase tracking-widest">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100">
+                      {walletTransactions.filter(tx => tx.status !== 'pending').slice(0, 10).map((tx) => (
+                        <tr key={tx.id} className="hover:bg-stone-50/50 transition-colors">
+                          <td className="px-8 py-4">
+                            <p className="font-bold text-stone-900">{tx.userName}</p>
+                            <p className="text-[10px] text-stone-400 uppercase">{tx.type === 'credit' ? 'Recarga' : 'Pagamento'}</p>
+                          </td>
+                          <td className="px-8 py-4">
+                            <p className={`font-black ${tx.type === 'credit' ? 'text-emerald-500' : 'text-red-500'}`}>
+                              {tx.type === 'credit' ? '+' : '-'} R$ {tx.amount.toFixed(2)}
+                            </p>
+                          </td>
+                          <td className="px-8 py-4 text-sm text-stone-500">
+                            {new Date(tx.createdAt).toLocaleDateString('pt-BR')}
+                          </td>
+                          <td className="px-8 py-4">
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                              tx.status === 'approved' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'
+                            }`}>
+                              {tx.status === 'approved' ? 'Aprovado' : 'Recusado'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </motion.div>
         )}
       </main>
 

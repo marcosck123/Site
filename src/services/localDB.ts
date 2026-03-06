@@ -1,4 +1,4 @@
-import { Product, User, CartItem, Order, OrderStatus, Coupon, Review, Driver, AppSettings, Ingredient, Notification, SavedAddress, Mission, AppBanner, FavoriteFolder } from '../types';
+import { Product, User, CartItem, Order, OrderStatus, Coupon, Review, Driver, AppSettings, Ingredient, Notification, SavedAddress, Mission, AppBanner, FavoriteFolder, WalletTransaction } from '../types';
 
 const DB_KEYS = {
   PRODUCTS: 'doce_entrega_products',
@@ -186,6 +186,33 @@ export const LocalDB = {
     orders.push(orderWithGoldenTicket);
     LocalDB.saveOrders(orders);
 
+    // Wallet Payment
+    if (order.paymentMethod === 'wallet') {
+      const users = LocalDB.getUsers();
+      const uIdx = users.findIndex(u => u.id === order.userId);
+      if (uIdx !== -1) {
+        users[uIdx].walletBalance = (users[uIdx].walletBalance || 0) - order.total;
+        
+        // Add transaction to history
+        const transactions = LocalDB.getWalletTransactions();
+        transactions.push({
+          id: Math.random().toString(36).substr(2, 9),
+          userId: order.userId,
+          userName: order.userName,
+          amount: order.total,
+          type: 'debit',
+          description: `Pagamento de Pedido #${order.id.slice(-6)}`,
+          status: 'approved',
+          createdAt: new Date().toISOString()
+        });
+        LocalDB.saveWalletTransactions(transactions);
+        LocalDB.saveUsers(users);
+        
+        const current = LocalDB.getCurrentUser();
+        if (current?.id === order.userId) LocalDB.setCurrentUser(users[uIdx]);
+      }
+    }
+
     const settings = LocalDB.getSettings();
     if (settings.inventoryControl) {
       const products = LocalDB.getProducts();
@@ -290,6 +317,8 @@ export const LocalDB = {
     inventoryControl: true,
     loyaltyProgram: true,
     isStoreOpen: true,
+    pixKey: '12.345.678/0001-90',
+    pixName: 'Doce Entrega LTDA',
     banners: [
       {
         id: '1',
@@ -545,5 +574,74 @@ export const LocalDB = {
       totalLoyaltyPoints,
       totalInventoryStock
     };
+  },
+
+  // Wallet
+  getWalletTransactions: (userId?: string): WalletTransaction[] => {
+    const allTransactions = LocalDB._get<WalletTransaction[]>('doce_entrega_wallet_tx', []);
+    return userId ? allTransactions.filter(tx => tx.userId === userId) : allTransactions;
+  },
+  saveWalletTransactions: (transactions: WalletTransaction[]) => {
+    LocalDB._save('doce_entrega_wallet_tx', transactions);
+  },
+  requestCredits: (userId: string, userName: string, amount: number, proofImage: string) => {
+    const transactions = LocalDB.getWalletTransactions();
+    const newTx: WalletTransaction = {
+      id: Math.random().toString(36).substr(2, 9),
+      userId,
+      userName,
+      amount,
+      type: 'credit',
+      description: 'Recarga de Carteira',
+      status: 'pending',
+      proofImage,
+      createdAt: new Date().toISOString()
+    };
+    transactions.push(newTx);
+    LocalDB.saveWalletTransactions(transactions);
+  },
+  approveCreditRequest: (txId: string) => {
+    const transactions = LocalDB.getWalletTransactions();
+    const idx = transactions.findIndex(tx => tx.id === txId);
+    if (idx !== -1 && transactions[idx].status === 'pending') {
+      transactions[idx].status = 'approved';
+      LocalDB.saveWalletTransactions(transactions);
+      
+      const users = LocalDB.getUsers();
+      const uIdx = users.findIndex(u => u.id === transactions[idx].userId);
+      if (uIdx !== -1) {
+        users[uIdx].walletBalance = (users[uIdx].walletBalance || 0) + transactions[idx].amount;
+        LocalDB.saveUsers(users);
+        
+        LocalDB.addNotification(transactions[idx].userId, {
+          id: Math.random().toString(36).substr(2, 9),
+          title: '💰 Créditos Adicionados!',
+          message: `Sua recarga de R$ ${transactions[idx].amount.toFixed(2)} foi aprovada!`,
+          type: 'info',
+          isRead: false,
+          createdAt: new Date().toISOString()
+        });
+        
+        const current = LocalDB.getCurrentUser();
+        if (current?.id === transactions[idx].userId) LocalDB.setCurrentUser(users[uIdx]);
+      }
+    }
+  },
+  rejectCreditRequest: (txId: string) => {
+    const transactions = LocalDB.getWalletTransactions();
+    const idx = transactions.findIndex(tx => tx.id === txId);
+    if (idx !== -1 && transactions[idx].status === 'pending') {
+      transactions[idx].status = 'rejected';
+      LocalDB.saveWalletTransactions(transactions);
+      
+      LocalDB.addNotification(transactions[idx].userId, {
+        id: Math.random().toString(36).substr(2, 9),
+        title: '❌ Recarga Recusada',
+        message: `Sua solicitação de recarga foi recusada. Verifique o comprovante enviado.`,
+        type: 'info',
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+    }
   },
 };

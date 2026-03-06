@@ -16,7 +16,20 @@ export interface User {
   subscription?: Subscription;
   loyaltyTier?: 'Bronze' | 'Prata' | 'Ouro';
   walletBalance?: number; // New: for Sweet Wallet
+  walletTransactions?: WalletTransaction[]; // New: transaction history
   favoriteFolders?: FavoriteFolder[]; // New: for organized favorites
+}
+
+export interface WalletTransaction {
+  id: string;
+  userId: string;
+  userName: string;
+  amount: number;
+  type: 'credit' | 'debit';
+  description: string;
+  status: 'pending' | 'approved' | 'rejected';
+  proofImage?: string; // For PIX confirmation
+  createdAt: string;
 }
 
 export interface FavoriteFolder {
@@ -92,7 +105,7 @@ export interface Order {
   createdAt: string;
   address: string;
   phone: string;
-  paymentMethod: 'credit' | 'pix' | 'cash';
+  paymentMethod: 'credit' | 'pix' | 'cash' | 'wallet';
   changeFor?: number;
   couponCode?: string;
   scheduledFor?: string;
@@ -157,6 +170,8 @@ export interface AppSettings {
   loyaltyProgram: boolean;
   isStoreOpen: boolean; // New: Panic Button
   banners: AppBanner[]; // New: Banner Manager
+  pixKey?: string; // New: for wallet top-up
+  pixName?: string; // New: for wallet top-up
 }
 
 export interface AppBanner {
