@@ -28,9 +28,11 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
     setError(null);
     
     try {
+      console.log('Attempting to register user:', { email, name });
       if (isLogin) {
         const user = await FirebaseService.login(email, password);
         if (user) {
+          console.log('Login successful:', user);
           onLogin(user);
           onClose();
         } else {
@@ -45,19 +47,22 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
           avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`
         }, password);
         
+        console.log('Registration successful, logging in user:', newUser);
         onLogin(newUser);
         onClose();
       }
     } catch (err: any) {
-      console.error(err);
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+      console.error('Authentication error:', err);
+      const errorCode = err?.code || err?.message || 'unknown';
+      
+      if (errorCode === 'auth/user-not-found' || errorCode === 'auth/wrong-password' || errorCode === 'auth/invalid-credential') {
         setError('E-mail ou senha incorretos.');
-      } else if (err.code === 'auth/email-already-in-use') {
+      } else if (errorCode === 'auth/email-already-in-use') {
         setError('Este e-mail já está cadastrado.');
-      } else if (err.code === 'auth/weak-password') {
+      } else if (errorCode === 'auth/weak-password') {
         setError('A senha deve ter pelo menos 6 caracteres.');
       } else {
-        setError('Ocorreu um erro na autenticação.');
+        setError(`Erro: ${errorCode}`);
       }
     } finally {
       setIsLoading(false);

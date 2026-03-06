@@ -25,15 +25,19 @@ import { User, Product, Order, Coupon, AppSettings, Ingredient, WalletTransactio
 export const FirebaseService = {
   // Auth
   login: async (email: string, pass: string) => {
+    console.log('FirebaseService: Logging in...', email);
     const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+    console.log('FirebaseService: Fetching user doc from Firestore...', userCredential.user.uid);
     const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
     return userDoc.exists() ? (userDoc.data() as User) : null;
   },
 
   register: async (userData: Partial<User>, pass: string) => {
+    console.log('FirebaseService: Registering user in Auth...', userData.email);
     const userCredential = await createUserWithEmailAndPassword(auth, userData.email!, pass);
     
     // Update Auth Profile
+    console.log('FirebaseService: Updating Auth Profile...');
     await updateProfile(userCredential.user, {
       displayName: userData.name,
       photoURL: userData.avatar
@@ -46,6 +50,7 @@ export const FirebaseService = {
       createdAt: new Date().toISOString(),
     } as User;
     
+    console.log('FirebaseService: Saving user to Firestore...', newUser.id);
     await setDoc(doc(db, 'users', userCredential.user.uid), newUser);
     return newUser;
   },

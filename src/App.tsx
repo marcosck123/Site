@@ -80,14 +80,14 @@ function AppContent() {
     syncSettings();
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        // Try to get from LocalDB first
-        const users = LocalDB.getUsers();
-        let user = users.find(u => u.id === firebaseUser.uid);
-        
-        if (!user) {
-          // Fetch from Firestore
-          try {
+      try {
+        if (firebaseUser) {
+          // Try to get from LocalDB first
+          const users = LocalDB.getUsers();
+          let user = users.find(u => u.id === firebaseUser.uid);
+          
+          if (!user) {
+            // Fetch from Firestore
             const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
             if (userDoc.exists()) {
               user = userDoc.data() as User;
@@ -101,18 +101,18 @@ function AppContent() {
                 avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.email}`
               };
             }
-          } catch (error) {
-            console.error('Error fetching user doc:', error);
           }
+          
+          if (user) {
+            setUser(user);
+            LocalDB.setCurrentUser(user);
+          }
+        } else {
+          setUser(null);
+          LocalDB.setCurrentUser(null);
         }
-        
-        if (user) {
-          setUser(user);
-          LocalDB.setCurrentUser(user);
-        }
-      } else {
-        setUser(null);
-        LocalDB.setCurrentUser(null);
+      } catch (error) {
+        console.error('Error in onAuthStateChanged:', error);
       }
     });
 

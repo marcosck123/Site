@@ -92,8 +92,13 @@ const INITIAL_PRODUCTS: Product[] = [
 export const LocalDB = {
   // Helper for localStorage
   _get: <T>(key: string, defaultValue: T): T => {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : defaultValue;
+    try {
+      const data = localStorage.getItem(key);
+      return data ? JSON.parse(data) : defaultValue;
+    } catch (error) {
+      console.error(`Error reading from LocalDB key "${key}":`, error);
+      return defaultValue;
+    }
   },
   _save: <T>(key: string, data: T) => {
     localStorage.setItem(key, JSON.stringify(data));
