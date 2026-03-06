@@ -4,6 +4,8 @@ import { X, Mail, Lock, User, ArrowRight, Phone, MapPin } from 'lucide-react';
 import { User as UserType } from '../types';
 import { LocalDB } from '../services/localDB';
 
+import { FirebaseService } from '../services/firebaseService';
+
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -27,24 +29,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
     
     try {
       if (isLogin) {
-        // Admin Check
-        if (email === 'marcoseduardock@gmail.com' && password === 'E-567654m') {
-          const adminUser: UserType = {
-            id: 'admin',
-            name: 'Administrador',
-            email: email,
-            isAdmin: true,
-            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=admin`
-          };
-          onLogin(adminUser);
-          onClose();
-          return;
-        }
-
-        // Regular User Check
-        const users = LocalDB.getUsers();
-        const user = users.find(u => u.email === email);
-        // In a real app, we'd check password hash. For now, we simulate.
+        const user = await FirebaseService.login(email, password);
         if (user) {
           onLogin(user);
           onClose();
@@ -52,29 +37,28 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
           setError('E-mail ou senha incorretos.');
         }
       } else {
-        // Registration
-        const users = LocalDB.getUsers();
-        if (users.some(u => u.email === email)) {
-          setError('Este e-mail já está cadastrado.');
-          return;
-        }
-
-        const newUser: UserType = {
-          id: Date.now().toString(),
+        const newUser = await FirebaseService.register({
           name,
           email,
           phone,
           address,
           avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`
-        };
-
-        LocalDB.registerUser(newUser);
+        }, password);
+        
         onLogin(newUser);
         onClose();
       }
     } catch (err: any) {
       console.error(err);
-      setError('Ocorreu um erro na autenticação.');
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        setError('E-mail ou senha incorretos.');
+      } else if (err.code === 'auth/email-already-in-use') {
+        setError('Este e-mail já está cadastrado.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('A senha deve ter pelo menos 6 caracteres.');
+      } else {
+        setError('Ocorreu um erro na autenticação.');
+      }
     } finally {
       setIsLoading(false);
     }

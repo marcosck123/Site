@@ -1,4 +1,5 @@
 import { Product, User, CartItem, Order, OrderStatus, Coupon, Review, Driver, AppSettings, Ingredient, Notification, SavedAddress, Mission, AppBanner, FavoriteFolder, WalletTransaction } from '../types';
+import { FirebaseService } from './firebaseService';
 
 const DB_KEYS = {
   PRODUCTS: 'doce_entrega_products',
@@ -14,6 +15,7 @@ const DB_KEYS = {
   INGREDIENTS: 'doce_entrega_ingredients',
   BANNERS: 'doce_entrega_banners',
   FAVORITE_FOLDERS: 'doce_entrega_favorite_folders',
+  WALLET_TRANSACTIONS: 'doce_entrega_wallet_transactions',
 };
 
 // Initial data if empty
@@ -95,6 +97,27 @@ export const LocalDB = {
   },
   _save: <T>(key: string, data: T) => {
     localStorage.setItem(key, JSON.stringify(data));
+    
+    // Sync to Firebase if it's a key we want to persist globally
+    if (key === DB_KEYS.ORDERS) {
+      // Sync orders to Firestore
+      const orders = data as unknown as Order[];
+      orders.forEach(order => {
+        FirebaseService.saveDocument('orders', order.id, order).catch(console.error);
+      });
+    } else if (key === DB_KEYS.SETTINGS) {
+      FirebaseService.saveSettings(data as unknown as AppSettings).catch(console.error);
+    } else if (key === DB_KEYS.USERS) {
+      const users = data as unknown as User[];
+      users.forEach(user => {
+        FirebaseService.saveDocument('users', user.id, user).catch(console.error);
+      });
+    } else if (key === DB_KEYS.WALLET_TRANSACTIONS) {
+      const txs = data as unknown as WalletTransaction[];
+      txs.forEach(tx => {
+        FirebaseService.saveDocument('wallet_transactions', tx.id, tx).catch(console.error);
+      });
+    }
   },
 
   // Products
@@ -146,6 +169,9 @@ export const LocalDB = {
     const users = LocalDB.getUsers();
     users.push(user);
     LocalDB.saveUsers(users);
+    
+    // Sync to Firestore
+    FirebaseService.saveDocument('users', user.id, user).catch(console.error);
   },
   getCurrentUser: (): User | null => LocalDB._get(DB_KEYS.CURRENT_USER, null),
   setCurrentUser: (user: User | null) => {

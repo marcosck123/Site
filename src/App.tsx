@@ -28,6 +28,9 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react
 import { Product, CartItem, User, Coupon, Order } from './types';
 import AuthModal from './components/AuthModal';
 import { LocalDB } from './services/localDB';
+import { FirebaseService } from './services/firebaseService';
+import { auth } from './firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import Admin from './pages/Admin';
 import Profile from './pages/Profile';
 import confetti from 'canvas-confetti';
@@ -63,6 +66,47 @@ function AppContent() {
   const [timeTheme, setTimeTheme] = useState<'morning' | 'afternoon' | 'evening'>('morning');
 
   useEffect(() => {
+    const syncSettings = async () => {
+      try {
+        const remoteSettings = await FirebaseService.getSettings();
+        if (remoteSettings) {
+          LocalDB.saveSettings(remoteSettings);
+        }
+      } catch (error) {
+        console.error('Error syncing settings:', error);
+      }
+    };
+    syncSettings();
+
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // Fetch user data from Firestore if needed, or use LocalDB as cache
+        const users = LocalDB.getUsers();
+        let user = users.find(u => u.id === firebaseUser.uid);
+        if (!user) {
+          // If not in LocalDB, try fetching from FirebaseService
+          // This handles cases where user registers on another device
+          // For now, we'll just use the firebaseUser info if available
+          user = {
+            id: firebaseUser.uid,
+            name: firebaseUser.displayName || 'Usuário',
+            email: firebaseUser.email || '',
+            isAdmin: firebaseUser.email === 'marcoseduardock@gmail.com',
+            avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.email}`
+          };
+        }
+        setUser(user);
+        LocalDB.setCurrentUser(user);
+      } else {
+        setUser(null);
+        LocalDB.setCurrentUser(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) setTimeTheme('morning');
     else if (hour >= 12 && hour < 18) setTimeTheme('afternoon');
@@ -85,7 +129,8 @@ function AppContent() {
     LocalDB.setCurrentUser(newUser);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await FirebaseService.logout();
     setUser(null);
     LocalDB.setCurrentUser(null);
     setIsUserMenuOpen(false);
