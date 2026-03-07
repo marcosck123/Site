@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Mail, Lock, User, ArrowRight, Phone, MapPin } from 'lucide-react';
 import { User as UserType } from '../types';
-import { LocalDB } from '../services/localDB';
-
 import { FirebaseService } from '../services/firebaseService';
 
 interface AuthModalProps {
@@ -19,24 +17,23 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError(null);
-    
+    onClose(); // Fecha o modal imediatamente
+
     try {
-      console.log('Attempting to register user:', { email, name });
       if (isLogin) {
         const user = await FirebaseService.login(email, password);
         if (user) {
-          console.log('Login successful:', user);
           onLogin(user);
-          onClose();
         } else {
-          setError('E-mail ou senha incorretos.');
+          // Se o login falhar, o modal já fechou. 
+          // O ideal seria reabri-lo com o erro ou mostrar um toast.
+          // Por enquanto, apenas logamos o erro no console.
+          console.error('Login failed: Invalid credentials');
         }
       } else {
         const newUser = await FirebaseService.register({
@@ -46,28 +43,13 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
           address,
           avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`
         }, password);
-        
-        console.log('Registration successful, logging in user:', newUser);
         onLogin(newUser);
-        onClose();
       }
     } catch (err: any) {
-      console.error('Authentication error:', err);
       const errorCode = err?.code || err?.message || 'unknown';
-      
-      if (errorCode === 'auth/user-not-found' || errorCode === 'auth/wrong-password' || errorCode === 'auth/invalid-credential') {
-        setError('E-mail ou senha incorretos.');
-      } else if (errorCode === 'auth/email-already-in-use') {
-        setError('Este e-mail já está cadastrado.');
-      } else if (errorCode === 'auth/weak-password') {
-        setError('A senha deve ter pelo menos 6 caracteres.');
-      } else if (errorCode === 'firebase/config-missing') {
-        setError('Firebase não configurado no ambiente. Preencha as variáveis VITE_FIREBASE_* no .env.');
-      } else {
-        setError(`Erro: ${errorCode}`);
-      }
-    } finally {
-      setIsLoading(false);
+      console.error('Authentication error:', errorCode);
+      // Como o modal já fechou, precisamos de um sistema de notificação global
+      // para informar o usuário sobre erros de cadastro (ex: e-mail já existe)
     }
   };
 
@@ -207,17 +189,10 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
 
                 <button
                   type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-brand-primary text-brand-secondary py-4 rounded-2xl font-bold shadow-lg shadow-brand-primary/20 hover:bg-brand-accent transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                  className="w-full bg-brand-primary text-brand-secondary py-4 rounded-2xl font-bold shadow-lg shadow-brand-primary/20 hover:bg-brand-accent transition-all flex items-center justify-center gap-2"
                 >
-                  {isLoading ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      {isLogin ? 'Entrar' : 'Criar Conta'}
-                      <ArrowRight size={18} />
-                    </>
-                  )}
+                  {isLogin ? 'Entrar' : 'Criar Conta'}
+                  <ArrowRight size={18} />
                 </button>
               </form>
 

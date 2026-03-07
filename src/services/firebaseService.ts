@@ -2,26 +2,29 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut, 
-  onAuthStateChanged,
   updateProfile
 } from 'firebase/auth';
 import { 
   doc, 
   setDoc, 
   getDoc, 
-  collection, 
   getDocs, 
+  collection, 
   query, 
   where, 
-  updateDoc,
-  onSnapshot,
-  addDoc,
-  deleteDoc,
-  serverTimestamp
+  updateDoc, 
+  onSnapshot, 
+  addDoc, 
+  deleteDoc, 
+  serverTimestamp, 
+  increment, 
+  writeBatch 
 } from 'firebase/firestore';
 import { auth, db, isFirebaseConfigValid } from '../firebase';
-import { User, Product, Order, Coupon, AppSettings, Ingredient, WalletTransaction } from '../types';
+import { User, Product, Order, Coupon, AppSettings, CartItem, InitialData } from '../types';
 
+// This is temporary, to hold the initial data for seeding.
+import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_COUPONS } from './initialData';
 
 const ensureFirebaseAuthEnabled = () => {
   if (!isFirebaseConfigValid) {
@@ -30,23 +33,42 @@ const ensureFirebaseAuthEnabled = () => {
 };
 
 export const FirebaseService = {
+  // Seeding
+  seedInitialData: async () => {
+    const productsRef = collection(db, 'products');
+    const productsSnap = await getDocs(query(productsRef));
+    if (productsSnap.empty) {
+      console.log('Seeding initial products...');
+      const batch = writeBatch(db);
+      INITIAL_PRODUCTS.forEach(product => {
+        const newDocRef = doc(productsRef);
+        batch.set(newDocRef, { ...product, id: newDocRef.id });
+      });
+      await batch.commit();
+    }
+
+    const settingsDoc = await getDoc(doc(db, 'settings', 'app'));
+    if (!settingsDoc.exists() || !settingsDoc.data().categories?.length) {
+        console.log('Seeding initial categories and settings...');
+        await setDoc(doc(db, 'settings', 'app'), {
+            categories: INITIAL_CATEGORIES,
+            coupons: INITIAL_COUPONS
+        }, { merge: true });
+    }
+  },
+
   // Auth
   login: async (email: string, pass: string) => {
     ensureFirebaseAuthEnabled();
-    console.log('FirebaseService: Logging in...', email);
     const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-    console.log('FirebaseService: Fetching user doc from Firestore...', userCredential.user.uid);
     const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
     return userDoc.exists() ? (userDoc.data() as User) : null;
   },
 
   register: async (userData: Partial<User>, pass: string) => {
     ensureFirebaseAuthEnabled();
-    console.log('FirebaseService: Registering user in Auth...', userData.email);
     const userCredential = await createUserWithEmailAndPassword(auth, userData.email!, pass);
     
-    // Update Auth Profile
-    console.log('FirebaseService: Updating Auth Profile...');
     await updateProfile(userCredential.user, {
       displayName: userData.name,
       photoURL: userData.avatar
@@ -56,23 +78,18 @@ export const FirebaseService = {
       ...userData,
       id: userCredential.user.uid,
       isAdmin: userData.email === 'marcoseduardock@gmail.com',
+      createdAt: serverTimestamp()
     } as User;
     
-    console.log('FirebaseService: Saving user to Firestore...', newUser.id);
     await setDoc(doc(db, 'users', userCredential.user.uid), newUser);
     return newUser;
   },
 
   logout: () => signOut(auth),
 
-  // Generic Firestore Helpers
-  getCollection: async <T>(collectionName: string): Promise<T[]> => {
-    const querySnapshot = await getDocs(collection(db, collectionName));
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
-  },
-
-  saveDocument: async (collectionName: string, id: string, data: any) => {
-    await setDoc(doc(db, collectionName, id), data, { merge: true });
+  // Generic Firestore
+  updateDocument: async (collectionName: string, id: string, data: any) => {
+    await updateDoc(doc(db, collectionName, id), data);
   },
 
   addDocument: async (collectionName: string, data: any) => {
@@ -83,21 +100,63 @@ export const FirebaseService = {
     return docRef.id;
   },
 
-  // Real-time Listeners
-  subscribeToCollection: (collectionName: string, callback: (data: any[]) => void) => {
-    return onSnapshot(collection(db, collectionName), (snapshot) => {
+  subscribeToCollection: (path: string, callback: (data: any[]) => void) => {
+    const q = query(collection(db, path));
+    return onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       callback(data);
     });
   },
 
+  subscribeToDocument: <T>(collectionName: string, docId: string, callback: (data: T | null) => void) => {
+    return onSnapshot(doc(db, collectionName, docId), (doc) => {
+      callback(doc.exists() ? { id: doc.id, ...doc.data() } as T : null);
+    });
+  },
+
   // Specific Methods
-  getProducts: () => FirebaseService.getCollection<Product>('products'),
-  getOrders: () => FirebaseService.getCollection<Order>('orders'),
-  getUsers: () => FirebaseService.getCollection<User>('users'),
+  subscribeToProducts: (callback: (products: Product[]) => void) => {
+    return FirebaseService.subscribeToCollection('products', callback);
+  },
+  
   getSettings: async () => {
     const docSnap = await getDoc(doc(db, 'settings', 'app'));
     return docSnap.exists() ? (docSnap.data() as AppSettings) : null;
   },
-  saveSettings: (settings: AppSettings) => FirebaseService.saveDocument('settings', 'app', settings),
+
+  // User
+  updateUser: (userId: string, data: Partial<User>) => {
+    return FirebaseService.updateDocument('users', userId, data);
+  },
+  subscribeToUser: (userId: string, callback: (user: User | null) => void) => {
+    return FirebaseService.subscribeToDocument<User>('users', userId, callback);
+  },
+
+  // Cart
+  subscribeToCart: (userId: string, callback: (items: CartItem[]) => void) => {
+    return FirebaseService.subscribeToCollection(`users/${userId}/cart`, callback);
+  },
+
+  async addToCart(userId: string, product: Product) {
+    const cartItemRef = doc(db, `users/${userId}/cart`, product.id);
+    const docSnap = await getDoc(cartItemRef);
+
+    if (docSnap.exists()) {
+      await updateDoc(cartItemRef, { quantity: increment(1) });
+    } else {
+      const newItem: CartItem = { ...product, quantity: 1 };
+      await setDoc(cartItemRef, newItem);
+    }
+  },
+
+  removeFromCart: (userId: string, productId: string) => {
+    return deleteDoc(doc(db, `users/${userId}/cart`, productId));
+  },
+
+  updateCartItemQuantity: (userId: string, productId: string, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      return FirebaseService.removeFromCart(userId, productId);
+    }
+    return updateDoc(doc(db, `users/${userId}/cart`, productId), { quantity: newQuantity });
+  }
 };
