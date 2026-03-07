@@ -509,54 +509,54 @@ function AppContent() {
 
       <AnimatePresence>
         {isCartOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsCartOpen(false)}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]"
-            />
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed right-0 top-0 h-full w-full md:max-w-md bg-white shadow-2xl z-[70] flex flex-col"
-            >
-              <div className="p-6 md:p-8 border-b border-stone-100 flex items-center justify-between">
-                <h2 className="text-2xl font-bold">Seu Carrinho</h2>
-                <button onClick={() => setIsCartOpen(false)}><X /></button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-4">
-                {cart.length === 0 ? (
-                  <p>Seu carrinho está vazio.</p>
-                ) : (
-                  cart.map((item) => (
-                    <div key={item.id} className="flex justify-between items-center">
-                      <div>
-                        <p className="font-bold">{item.name}</p>
-                        <p>R$ {item.price.toFixed(2)}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => updateQuantity(item.id, -1)}><Minus size={16} /></button>
-                        <span>{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.id, 1)}><Plus size={16} /></button>
-                        <button onClick={() => removeFromCart(item.id)}><X size={16} className="text-red-500" /></button>
-                      </div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsCartOpen(false)}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]"
+          />
+        )}
+        {isCartOpen && (
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed right-0 top-0 h-full w-full md:max-w-md bg-white shadow-2xl z-[70] flex flex-col"
+          >
+            <div className="p-6 md:p-8 border-b border-stone-100 flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Seu Carrinho</h2>
+              <button onClick={() => setIsCartOpen(false)}><X /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-4">
+              {cart.length === 0 ? (
+                <p>Seu carrinho está vazio.</p>
+              ) : (
+                cart.map((item) => (
+                  <div key={item.id} className="flex justify-between items-center">
+                    <div>
+                      <p className="font-bold">{item.name}</p>
+                      <p>R$ {item.price.toFixed(2)}</p>
                     </div>
-                  ))
-                )}
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => updateQuantity(item.id, -1)}><Minus size={16} /></button>
+                      <span>{item.quantity}</span>
+                      <button onClick={() => updateQuantity(item.id, 1)}><Plus size={16} /></button>
+                      <button onClick={() => removeFromCart(item.id)}><X size={16} className="text-red-500" /></button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="p-6 md:p-8 border-t border-stone-100 space-y-4">
+              <div className="flex justify-between font-bold">
+                <span>Total</span>
+                <span>R$ {finalTotal.toFixed(2)}</span>
               </div>
-              <div className="p-6 md:p-8 border-t border-stone-100 space-y-4">
-                <div className="flex justify-between font-bold">
-                  <span>Total</span>
-                  <span>R$ {finalTotal.toFixed(2)}</span>
-                </div>
-                <button onClick={handleCheckout} className="w-full bg-brand-primary text-white py-3 rounded-lg font-bold">Finalizar Pedido</button>
-              </div>
-            </motion.div>
-          </>
+              <button onClick={handleCheckout} className="w-full bg-brand-primary text-white py-3 rounded-lg font-bold">Finalizar Pedido</button>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 

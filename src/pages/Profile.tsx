@@ -833,7 +833,6 @@ export default function Profile({ user, onUpdate, onReorder }: ProfileProps) {
         )}
       </AnimatePresence>
 
-      {/* Golden Ticket Modal */}
       <AnimatePresence>
         {isGoldenModalOpen && (
           <>
@@ -888,82 +887,6 @@ export default function Profile({ user, onUpdate, onReorder }: ProfileProps) {
             </motion.div>
           </>
         )}
-        {activeTab === 'wallet' && (
-          <motion.div
-            key="wallet"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            className="space-y-8"
-          >
-            <div className="bg-brand-secondary rounded-[40px] p-10 text-brand-primary relative overflow-hidden shadow-2xl shadow-brand-secondary/20">
-              <div className="absolute top-0 right-0 p-12 opacity-10">
-                <ShoppingBag size={120} />
-              </div>
-              <div className="relative z-10">
-                <p className="text-xs font-black uppercase tracking-widest opacity-60 mb-2">Saldo Disponível</p>
-                <h2 className="text-5xl font-display font-black mb-8">R$ {user.walletBalance?.toFixed(2) || '0,00'}</h2>
-                <div className="flex gap-4">
-                  <button 
-                    onClick={() => setIsAddCreditsModalOpen(true)}
-                    className="bg-brand-primary text-brand-secondary px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-105 transition-all shadow-xl"
-                  >
-                    Adicionar Créditos
-                  </button>
-                  <button className="bg-white/50 backdrop-blur-md text-brand-primary px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-105 transition-all">
-                    Extrato
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-8 rounded-[40px] shadow-sm border border-stone-100">
-              <h3 className="text-xl font-display font-black text-stone-900 mb-6">Últimas Transações</h3>
-              <div className="space-y-4">
-                {walletTransactions.length > 0 ? (
-                  walletTransactions.map((tx) => (
-                    <div key={tx.id} className="flex items-center justify-between p-4 bg-stone-50 rounded-2xl border border-stone-100">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                          tx.type === 'credit' 
-                            ? tx.status === 'approved' ? 'bg-emerald-50 text-emerald-500' : 'bg-amber-50 text-amber-500'
-                            : 'bg-red-50 text-red-500'
-                        }`}>
-                          {tx.type === 'credit' ? <Plus size={20} /> : <Minus size={20} />}
-                        </div>
-                        <div>
-                          <p className="font-bold text-stone-900 text-sm">{tx.description}</p>
-                          <div className="flex items-center gap-2">
-                            <p className="text-[10px] text-stone-400 font-bold uppercase">
-                              {new Date(tx.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
-                            </p>
-                            {tx.status === 'pending' && (
-                              <span className="text-[8px] bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-full font-black uppercase">Pendente</span>
-                            )}
-                            {tx.status === 'rejected' && (
-                              <span className="text-[8px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full font-black uppercase">Recusado</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <span className={`font-black ${tx.type === 'credit' ? 'text-emerald-500' : 'text-red-500'}`}>
-                        {tx.type === 'credit' ? '+' : '-'} R$ {tx.amount.toFixed(2)}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-stone-400 text-sm italic">Nenhuma transação encontrada.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Verification Modal */}
-      <AnimatePresence>
         {isAddCreditsModalOpen && (
           <>
             <motion.div
@@ -1119,10 +1042,10 @@ export default function Profile({ user, onUpdate, onReorder }: ProfileProps) {
                   {isLoading ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
-                    <>
+                    <div className="flex items-center gap-2 justify-center">
                       Confirmar Código
                       <ArrowRight size={18} />
-                    </>
+                    </div>
                   )}
                 </button>
               </div>
