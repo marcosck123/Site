@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { LocalDB } from './services/localDB';
 
 type Theme = 'light' | 'dark';
 
@@ -12,8 +11,9 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    const settings = LocalDB.getSettings();
-    return settings.darkMode ? 'dark' : 'light';
+    const savedTheme = localStorage.getItem('theme') as Theme | null;
+    const userPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return savedTheme || (userPrefersDark ? 'dark' : 'light');
   });
 
   useEffect(() => {
@@ -23,9 +23,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     } else {
       root.classList.remove('dark');
     }
-    
-    const settings = LocalDB.getSettings();
-    LocalDB.saveSettings({ ...settings, darkMode: theme === 'dark' });
+    localStorage.setItem('theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {
