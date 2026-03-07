@@ -1,8 +1,15 @@
-node_modules/
-build/
-dist/
-coverage/
+# Dependencies
+/node_modules
+
+# Build artifacts
+/dist
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE and OS files
 .DS_Store
-*.log
-.env*
-!.env.example
+.vscode/
+.idea/
