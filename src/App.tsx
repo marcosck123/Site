@@ -23,7 +23,7 @@ import {
   Gift,
   Wallet
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Product, CartItem, User, Coupon, Order } from './types';
 import AuthModal from './components/AuthModal';
@@ -310,7 +310,10 @@ function AppContent() {
       <AuthModal 
         isOpen={isAuthModalOpen} 
         onClose={() => setIsAuthModalOpen(false)} 
-        onLogin={() => setIsAuthModalOpen(false)}
+        onLogin={(user) => {
+            setUser(user);
+            setIsAuthModalOpen(false);
+        }}
       />
     </div>
   );
