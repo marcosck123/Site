@@ -72,7 +72,11 @@ function AppContent() {
       try {
         const remoteSettings = await FirebaseService.getSettings();
         if (remoteSettings) {
-          LocalDB.saveSettings(remoteSettings);
+          const localSettings = LocalDB.getSettings();
+          // Apenas salva se houver diferença para evitar loops
+          if (JSON.stringify(remoteSettings) !== JSON.stringify(localSettings)) {
+            localStorage.setItem(DB_KEYS.SETTINGS, JSON.stringify(remoteSettings));
+          }
         }
       } catch (error) {
         console.error('Error syncing settings:', error);
@@ -83,30 +87,24 @@ function AppContent() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
         if (firebaseUser) {
-          // Try to get from LocalDB first
-          const users = LocalDB.getUsers();
-          let user = users.find(u => u.id === firebaseUser.uid);
-          
-          if (!user) {
-            // Fetch from Firestore
-            const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-            if (userDoc.exists()) {
-              user = userDoc.data() as User;
-            } else {
-              // Fallback
-              user = {
-                id: firebaseUser.uid,
-                name: firebaseUser.displayName || 'Usuário',
-                email: firebaseUser.email || '',
-                isAdmin: firebaseUser.email === 'marcoseduardock@gmail.com',
-                avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.email}`
-              };
-            }
-          }
-          
-          if (user) {
-            setUser(user);
-            LocalDB.setCurrentUser(user);
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data() as User;
+            setUser(userData);
+            LocalDB.setCurrentUser(userData);
+          } else {
+            // Fallback para caso o doc não exista (raro, mas seguro)
+            const newUser: User = {
+              id: firebaseUser.uid,
+              name: firebaseUser.displayName || 'Usuário',
+              email: firebaseUser.email || '',
+              isAdmin: firebaseUser.email === 'marcoseduardock@gmail.com',
+              avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.email}`,
+            };
+            setUser(newUser);
+            LocalDB.setCurrentUser(newUser);
+            // Tenta salvar no firestore se não existir
+            await FirebaseService.saveDocument('users', newUser.id, newUser);
           }
         } else {
           setUser(null);

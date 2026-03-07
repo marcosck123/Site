@@ -102,7 +102,7 @@ export const LocalDB = {
   },
   _save: <T>(key: string, data: T) => {
     localStorage.setItem(key, JSON.stringify(data));
-    
+
     // Sync to Firebase if it's a key we want to persist globally
     if (key === DB_KEYS.ORDERS) {
       // Sync orders to Firestore
@@ -110,8 +110,6 @@ export const LocalDB = {
       orders.forEach(order => {
         FirebaseService.saveDocument('orders', order.id, order).catch(console.error);
       });
-    } else if (key === DB_KEYS.SETTINGS) {
-      FirebaseService.saveSettings(data as unknown as AppSettings).catch(console.error);
     } else if (key === DB_KEYS.USERS) {
       const users = data as unknown as User[];
       users.forEach(user => {
@@ -609,11 +607,11 @@ export const LocalDB = {
 
   // Wallet
   getWalletTransactions: (userId?: string): WalletTransaction[] => {
-    const allTransactions = LocalDB._get<WalletTransaction[]>('doce_entrega_wallet_tx', []);
+    const allTransactions = LocalDB._get<WalletTransaction[]>(DB_KEYS.WALLET_TRANSACTIONS, []);
     return userId ? allTransactions.filter(tx => tx.userId === userId) : allTransactions;
   },
   saveWalletTransactions: (transactions: WalletTransaction[]) => {
-    LocalDB._save('doce_entrega_wallet_tx', transactions);
+    LocalDB._save(DB_KEYS.WALLET_TRANSACTIONS, transactions);
   },
   requestCredits: (userId: string, userName: string, amount: number, proofImage: string) => {
     const transactions = LocalDB.getWalletTransactions();
