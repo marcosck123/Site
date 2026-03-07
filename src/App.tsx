@@ -24,7 +24,7 @@ import {
   Wallet
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Product, CartItem, User, Coupon, Order } from './types';
 import AuthModal from './components/AuthModal';
 import { LocalDB } from './services/localDB';
@@ -42,6 +42,7 @@ import Products from './pages/Products';
 
 function AppContent() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [cart, setCart] = useState<CartItem[]>(LocalDB.getCart());
   const products = LocalDB.getProducts();
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -140,6 +141,8 @@ function AppContent() {
   const handleLogin = (newUser: User) => {
     setUser(newUser);
     LocalDB.setCurrentUser(newUser);
+    setIsAuthModalOpen(false); // Fecha o modal
+    navigate('/'); // Redireciona para a página inicial
   };
 
   const handleLogout = async () => {
