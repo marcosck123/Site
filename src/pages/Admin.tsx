@@ -63,7 +63,7 @@ export default function Admin() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
-  const [walletTransactions, setWalletTransactions] = useState<any[]>(LocalDB.getWalletTransactions());
+  const [walletTransactions, setWalletTransactions] = useState<WalletTransaction[]>(LocalDB.getWalletTransactions());
   const [settings, setSettings] = useState<AppSettings>(LocalDB.getSettings());
   const [newCategory, setNewCategory] = useState('');
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -1947,7 +1947,7 @@ export default function Admin() {
                         required
                         value={ingredientFormData.stock}
                         onChange={e => setIngredientFormData({...ingredientFormData, stock: e.target.value})}
-                        className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none font-bold"
+                        className="w-full bg.stone-50 border border-stone-100 rounded-2xl py-3 px-4 focus:ring-2 focus:ring-brand-primary/20 outline-none font-bold"
                       />
                     </div>
                     <div className="space-y-1">

@@ -56,7 +56,6 @@ export const FirebaseService = {
       ...userData,
       id: userCredential.user.uid,
       isAdmin: userData.email === 'marcoseduardock@gmail.com',
-      createdAt: new Date().toISOString(),
     } as User;
     
     console.log('FirebaseService: Saving user to Firestore...', newUser.id);
