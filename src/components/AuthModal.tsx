@@ -27,9 +27,9 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
     setError(null);
 
     if (isLogin) {
-        setLoadingMessage('Entrando...');
+        setLoadingMessage('Signing in...');
     } else {
-        setLoadingMessage('Estamos criando sua conta...');
+        setLoadingMessage('We\'re creating your account...');
     }
     setIsLoading(true);
 
@@ -40,7 +40,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
           onLogin(user);
           onClose();
         } else {
-          setError('Credenciais inválidas. Tente novamente.');
+          setError('Invalid credentials. Please try again.');
         }
       } else {
         const newUser = await FirebaseService.register({
@@ -56,7 +56,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
     } catch (err: any) {
       const errorCode = err?.code || err?.message || 'unknown';
       console.error('Authentication error:', errorCode);
-      setError('Ocorreu um erro. Tente novamente.');
+      setError('An error occurred. Please try again.');
     } finally {
         setIsLoading(false);
         setLoadingMessage('');
@@ -96,7 +96,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
                 </button>
 
                 <div className="text-center mb-8">
-                  <motion.div 
+                  <motion.div
                     className="w-16 h-16 bg-brand-secondary rounded-2xl flex items-center justify-center text-brand-primary mx-auto mb-4"
                     animate={{ rotate: isLogin ? 0 : 360 }}
                     transition={{ duration: 0.5 }}
@@ -104,12 +104,12 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
                     <User size={32} />
                   </motion.div>
                   <h2 className="text-2xl font-bold text-stone-900">
-                    {isLogin ? 'Bem-vindo de volta!' : 'Crie sua conta'}
+                    {isLogin ? 'Welcome back!' : 'Create your account'}
                   </h2>
                   <p className="text-stone-500 text-sm mt-1">
                     {isLogin
-                      ? 'Entre para acompanhar seus pedidos e promoções.'
-                      : 'Junte-se a nós para uma experiência mais doce.'}
+                      ? 'Sign in to track your orders and promotions.'
+                      : 'Join us for a sweeter experience.'}
                   </p>
                 </div>
 
@@ -128,7 +128,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
                         className="overflow-hidden"
                     >
                       <div className="space-y-1">
-                        <label className="text-xs font-bold text-stone-700 ml-1">NOME COMPLETO</label>
+                        <label className="text-xs font-bold text-stone-700 ml-1">FULL NAME</label>
                         <div className="relative">
                           <User className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
                           <input
@@ -136,7 +136,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
                             required
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            placeholder="Como quer ser chamado?"
+                            placeholder="What should we call you?"
                             className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all outline-none"
                           />
                         </div>
@@ -153,7 +153,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="seu@email.com"
+                        placeholder="your@email.com"
                         className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all outline-none"
                       />
                     </div>
@@ -161,10 +161,10 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
 
                   <div className="space-y-1">
                     <div className="flex justify-between items-center ml-1">
-                      <label className="text-xs font-bold text-stone-700">SENHA</label>
+                      <label className="text-xs font-bold text-stone-700">PASSWORD</label>
                       {isLogin && (
                         <button type="button" className="text-[10px] font-bold text-brand-primary hover:underline">
-                          ESQUECEU A SENHA?
+                          FORGOT PASSWORD?
                         </button>
                       )}
                     </div>
@@ -190,7 +190,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
                           className="space-y-4 overflow-hidden"
                       >
                       <div className="space-y-1">
-                        <label className="text-xs font-bold text-stone-700 ml-1">NÚMERO (WHATSAPP)</label>
+                        <label className="text-xs font-bold text-stone-700 ml-1">NUMBER (WHATSAPP)</label>
                         <div className="relative">
                           <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
                           <input
@@ -205,7 +205,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-xs font-bold text-stone-700 ml-1">ENDEREÇO DE ENTREGA</label>
+                        <label className="text-xs font-bold text-stone-700 ml-1">DELIVERY ADDRESS</label>
                         <div className="relative">
                           <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
                           <input
@@ -213,7 +213,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
                             required
                             value={address}
                             onChange={(e) => setAddress(e.target.value)}
-                            placeholder="Rua, Número, Bairro, Cidade"
+                            placeholder="Street, Number, Neighborhood, City"
                             className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all outline-none"
                           />
                         </div>
@@ -228,18 +228,18 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    {isLogin ? 'Entrar' : 'Criar Conta'}
+                    {isLogin ? 'Sign In' : 'Create Account'}
                     <ArrowRight size={18} />
                   </motion.button>
                 </form>
 
                 <p className="text-center mt-8 text-sm text-stone-500">
-                  {isLogin ? 'Não tem uma conta?' : 'Já tem uma conta?'}
+                  {isLogin ? 'Don\'t have an account?' : 'Already have an account?'}
                   <button
                     onClick={() => setIsLogin(!isLogin)}
                     className="ml-1 font-bold text-brand-primary hover:underline"
                   >
-                    {isLogin ? 'Cadastre-se' : 'Faça login'}
+                    {isLogin ? 'Sign up' : 'Sign in'}
                   </button>
                 </p>
               </div>
