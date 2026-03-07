@@ -11,11 +11,7 @@ import {
   X, 
   Truck, 
   CheckCircle,
-  Users,
-  DollarSign,
-  Tag,
-  Ticket,
-  Settings
+  Users
 } from 'lucide-react';
 import { Product, Order, OrderStatus, User } from '../types';
 import { FirebaseService } from '../services/firebaseService';
@@ -39,7 +35,6 @@ export default function Admin() {
         setIsLoading(false);
     });
 
-    // Subscribe to other collections as needed for other tabs
     const unsubscribeProducts = FirebaseService.subscribeToProducts(setProducts);
     const unsubscribeUsers = FirebaseService.subscribeToCollection('users', (data) => {
          const formattedUsers = data.map(user => ({
@@ -58,11 +53,7 @@ export default function Admin() {
 
   const handleUpdateOrderStatus = async (orderId: string, status: OrderStatus) => {
     await FirebaseService.updateDocument('orders', orderId, { status });
-    // The UI will update automatically thanks to the real-time listener
   };
-
-  // Other handlers for products, users, etc. will be added here
-  // For now, they are empty to avoid errors
 
   const Sidebar = () => (
     <aside className="hidden md:flex w-64 bg-brand-primary text-brand-secondary p-6 flex-col gap-8 sticky top-0 h-screen">
