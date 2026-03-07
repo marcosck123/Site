@@ -65,6 +65,7 @@ export const FirebaseService = {
     return userDoc.exists() ? (userDoc.data() as User) : null;
   },
 
+  //The validation is done in the AuthModal.tsx file
   register: async (userData: Partial<User>, pass: string) => {
     ensureFirebaseAuthEnabled();
     const userCredential = await createUserWithEmailAndPassword(auth, userData.email!, pass);

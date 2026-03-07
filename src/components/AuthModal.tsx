@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, ArrowRight, Phone, MapPin } from 'lucide-react';
+import { X, Mail, Lock, User, ArrowRight, Phone, MapPin, AlertCircle } from 'lucide-react';
 import { User as UserType } from '../types';
 import { FirebaseService } from '../services/firebaseService';
 import LoadingModal from './LoadingModal';
@@ -22,14 +22,50 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
 
+  const validateEmail = (email: string) => {
+    const re = /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/;
+    return re.test(String(email).toLowerCase());
+  };
+
+  const validatePhone = (phone: string) => {
+    const re = /^\(\d{2}\)\s\d{5}-\d{4}$/;
+    return re.test(String(phone));
+  };
+
+  const formatPhoneNumber = (value: string) => {
+    const numericValue = value.replace(/\D/g, '');
+    if (numericValue.length <= 2) {
+      return `(${numericValue}`;
+    }
+    if (numericValue.length <= 7) {
+      return `(${numericValue.slice(0, 2)}) ${numericValue.slice(2)}`;
+    }
+    return `(${numericValue.slice(0, 2)}) ${numericValue.slice(2, 7)}-${numericValue.slice(7, 11)}`;
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPhone(formatPhoneNumber(e.target.value));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
+    if (!isLogin) {
+      if (!validateEmail(email)) {
+        setError('E-mail inválido. Verifique e tente novamente.');
+        return;
+      }
+      if (!validatePhone(phone)) {
+        setError('Telefone inválido. Use o formato (00) 00000-0000.');
+        return;
+      }
+    }
+
     if (isLogin) {
-        setLoadingMessage('Signing in...');
+        setLoadingMessage('Entrando...');
     } else {
-        setLoadingMessage('We\'re creating your account...');
+        setLoadingMessage('Estamos criando sua conta...');
     }
     setIsLoading(true);
 
@@ -40,7 +76,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
           onLogin(user);
           onClose();
         } else {
-          setError('Invalid credentials. Please try again.');
+          setError('Credenciais inválidas. Por favor, tente novamente.');
         }
       } else {
         const newUser = await FirebaseService.register({
@@ -56,7 +92,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
     } catch (err: any) {
       const errorCode = err?.code || err?.message || 'unknown';
       console.error('Authentication error:', errorCode);
-      setError('An error occurred. Please try again.');
+      setError('Ocorreu um erro. Por favor, tente novamente.');
     } finally {
         setIsLoading(false);
         setLoadingMessage('');
@@ -104,19 +140,24 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
                     <User size={32} />
                   </motion.div>
                   <h2 className="text-2xl font-bold text-stone-900">
-                    {isLogin ? 'Welcome back!' : 'Create your account'}
+                    {isLogin ? 'Bem-vindo de volta!' : 'Crie sua conta'}
                   </h2>
                   <p className="text-stone-500 text-sm mt-1">
                     {isLogin
-                      ? 'Sign in to track your orders and promotions.'
-                      : 'Join us for a sweeter experience.'}
+                      ? 'Faça login para acompanhar seus pedidos e promoções.'
+                      : 'Junte-se a nós para uma experiência mais doce.'}
                   </p>
                 </div>
 
                 {error && (
-                  <div className="mb-4 p-3 bg-red-50 text-red-600 text-xs rounded-xl border border-red-100">
+                   <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-100 flex items-center gap-2 font-bold"
+                  >
+                    <AlertCircle size={20} />
                     {error}
-                  </div>
+                  </motion.div>
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -128,7 +169,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
                         className="overflow-hidden"
                     >
                       <div className="space-y-1">
-                        <label className="text-xs font-bold text-stone-700 ml-1">FULL NAME</label>
+                        <label className="text-xs font-bold text-stone-700 ml-1">NOME COMPLETO</label>
                         <div className="relative">
                           <User className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
                           <input
@@ -136,7 +177,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
                             required
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            placeholder="What should we call you?"
+                            placeholder="Como devemos te chamar?"
                             className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all outline-none"
                           />
                         </div>
@@ -153,7 +194,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="your@email.com"
+                        placeholder="seu@email.com"
                         className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all outline-none"
                       />
                     </div>
@@ -161,10 +202,10 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
 
                   <div className="space-y-1">
                     <div className="flex justify-between items-center ml-1">
-                      <label className="text-xs font-bold text-stone-700">PASSWORD</label>
+                      <label className="text-xs font-bold text-stone-700">SENHA</label>
                       {isLogin && (
                         <button type="button" className="text-[10px] font-bold text-brand-primary hover:underline">
-                          FORGOT PASSWORD?
+                          ESQUECEU A SENHA?
                         </button>
                       )}
                     </div>
@@ -190,14 +231,14 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
                           className="space-y-4 overflow-hidden"
                       >
                       <div className="space-y-1">
-                        <label className="text-xs font-bold text-stone-700 ml-1">NUMBER (WHATSAPP)</label>
+                        <label className="text-xs font-bold text-stone-700 ml-1">NÚMERO (WHATSAPP)</label>
                         <div className="relative">
                           <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
                           <input
                             type="tel"
                             required
                             value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
+                            onChange={handlePhoneChange}
                             placeholder="(00) 00000-0000"
                             className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all outline-none"
                           />
@@ -205,7 +246,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-xs font-bold text-stone-700 ml-1">DELIVERY ADDRESS</label>
+                        <label className="text-xs font-bold text-stone-700 ml-1">ENDEREÇO DE ENTREGA</label>
                         <div className="relative">
                           <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
                           <input
@@ -213,7 +254,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
                             required
                             value={address}
                             onChange={(e) => setAddress(e.target.value)}
-                            placeholder="Street, Number, Neighborhood, City"
+                            placeholder="Rua, Número, Bairro, Cidade"
                             className="w-full bg-stone-50 border border-stone-100 rounded-2xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all outline-none"
                           />
                         </div>
@@ -228,18 +269,18 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    {isLogin ? 'Sign In' : 'Create Account'}
+                    {isLogin ? 'Entrar' : 'Criar Conta'}
                     <ArrowRight size={18} />
                   </motion.button>
                 </form>
 
                 <p className="text-center mt-8 text-sm text-stone-500">
-                  {isLogin ? 'Don\'t have an account?' : 'Already have an account?'}
+                  {isLogin ? 'Não tem uma conta?' : 'Já tem uma conta?'}
                   <button
                     onClick={() => setIsLogin(!isLogin)}
                     className="ml-1 font-bold text-brand-primary hover:underline"
                   >
-                    {isLogin ? 'Sign up' : 'Sign in'}
+                    {isLogin ? 'Cadastre-se' : 'Entrar'}
                   </button>
                 </p>
               </div>

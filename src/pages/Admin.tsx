@@ -61,7 +61,7 @@ export default function Admin() {
         <div className="w-10 h-10 bg-brand-secondary rounded-xl flex items-center justify-center text-brand-primary">
           <ShoppingBag size={24} />
         </div>
-        <span className="text-xl font-black tracking-tighter">ADMIN</span>
+        <span className="text-xl font-black tracking-tighter">PAINEL</span>
       </div>
 
       <nav className="flex flex-col gap-2">
@@ -69,7 +69,7 @@ export default function Admin() {
           onClick={() => setActiveTab('dashboard')}
           className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'dashboard' ? 'bg-brand-secondary text-brand-primary' : 'hover:bg-white/10'}`}
         >
-          <LayoutDashboard size={20} /> Dashboard
+          <LayoutDashboard size={20} /> Painel
         </button>
         <button 
           onClick={() => setActiveTab('orders')}
@@ -196,7 +196,7 @@ export default function Admin() {
           )}
 
           {activeTab === 'dashboard' && (
-            <p>Dashboard em breve.</p>
+            <p>Painel em breve.</p>
           )}
 
           {activeTab === 'users' && (
