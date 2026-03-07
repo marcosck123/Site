@@ -1059,10 +1059,10 @@ export default function Profile({ user, onUpdate, onReorder }: ProfileProps) {
                   {isRequestingCredits ? (
                     <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
-                    <>
+                    <div className="flex items-center gap-2 justify-center">
                       <Save size={24} />
                       Solicitar Créditos
-                    </>
+                    </div>
                   )}
                 </button>
               </form>
