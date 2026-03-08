@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { 
   ShoppingBag, 
   Plus, 
@@ -21,69 +21,51 @@ import {
   Bell,
   Smartphone,
   Gift,
-  Wallet
+  Wallet,
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Product, CartItem, User, Coupon, Order } from './types';
 import AuthModal from './components/AuthModal';
 import { FirebaseService } from './services/firebaseService';
-import { auth } from './firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { useAuth } from './hooks/useAuth';
+import { useApp } from './hooks/useApp';
 import Admin from './pages/Admin';
 import Profile from './pages/Profile';
-import confetti from 'canvas-confetti';
 
 // Pages
 import Home from './pages/Home';
 import Products from './pages/Products';
+import ProductDetail from './pages/ProductDetail';
+import Cart from './pages/Cart';
+import Checkout from './pages/Checkout';
 
-function AppContent() {
+export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { products } = useApp();
   
-  const [products, setProducts] = useState<Product[]>([]);
-  const [user, setUser] = useState<User | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [orderPlaced, setOrderPlaced] = useState(false);
-
-  // To be migrated
-  const [paymentMethod, setPaymentMethod] = useState<'credit' | 'pix' | 'cash' | 'apple'>('pix');
-
-  // Seed and subscribe to products
-  useEffect(() => {
-    FirebaseService.seedInitialData();
-    const unsubscribe = FirebaseService.subscribeToProducts(setProducts);
-    return () => unsubscribe();
-  }, []);
 
   // Auth, User and Cart subscriptions
   useEffect(() => {
-    let unsubscribeFromUser: (() => void) | null = null;
     let unsubscribeFromCart: (() => void) | null = null;
 
-    const unsubscribeFromAuth = onAuthStateChanged(auth, (firebaseUser) => {
-      if (unsubscribeFromUser) unsubscribeFromUser();
-      if (unsubscribeFromCart) unsubscribeFromCart();
-
-      if (firebaseUser) {
-        unsubscribeFromUser = FirebaseService.subscribeToUser(firebaseUser.uid, setUser);
-        unsubscribeFromCart = FirebaseService.subscribeToCart(firebaseUser.uid, setCartItems);
-      } else {
-        setUser(null);
-        setCartItems([]);
-      }
-    });
+    if (user) {
+      unsubscribeFromCart = FirebaseService.subscribeToCart(user.id, setCartItems);
+    } else {
+      setCartItems([]);
+    }
 
     return () => {
-      unsubscribeFromAuth();
-      if (unsubscribeFromUser) unsubscribeFromUser();
       if (unsubscribeFromCart) unsubscribeFromCart();
     };
-  }, []);
+  }, [user]);
 
   const handleLogout = async () => {
     await FirebaseService.logout();
@@ -105,12 +87,16 @@ function AppContent() {
     FirebaseService.removeFromCart(user.id, productId);
   };
 
-  const handleUpdateQuantity = (productId: string, delta: number) => {
+  const handleClearCart = async () => {
     if (!user) return;
-    const item = cartItems.find(i => i.id === productId);
-    if (item) {
-      FirebaseService.updateCartItemQuantity(user.id, productId, item.quantity + delta);
+    for (const item of cartItems) {
+      await FirebaseService.removeFromCart(user.id, item.id);
     }
+  };
+
+  const handleUpdateQuantity = (productId: string, newQuantity: number) => {
+    if (!user) return;
+    FirebaseService.updateCartItemQuantity(user.id, productId, newQuantity);
   };
 
   const handleReorder = async (order: Order) => {
@@ -119,44 +105,13 @@ function AppContent() {
       await FirebaseService.removeFromCart(user.id, item.id);
     }
     for (const item of order.items) {
-      const productDoc: Product = { ...item, stock: undefined, rating: undefined };
+      const productDoc: Product = { ...item, stock: undefined, rating: undefined, image: item.image || '' };
       await FirebaseService.addToCart(user.id, productDoc);
     }
     setIsCartOpen(true);
   };
   
-  const handleCheckout = async () => {
-    if (!user) {
-      setIsAuthModalOpen(true);
-      return;
-    }
-
-    const newOrder = {
-      userId: user.id,
-      userName: user.name,
-      items: cartItems,
-      total: cartTotal,
-      status: 'Pendente' as const,
-      address: user.address || 'Endereço não informado',
-      phone: user.phone || 'Telefone não informado',
-      paymentMethod,
-    };
-
-    await FirebaseService.addDocument('orders', newOrder);
-    
-    for (const item of cartItems) {
-      await FirebaseService.removeFromCart(user.id, item.id);
-    }
-    
-    setOrderPlaced(true);
-    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-    setTimeout(() => {
-      setOrderPlaced(false);
-      setIsCartOpen(false);
-    }, 3000);
-  };
-
-  const cartTotal = useMemo(() => cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0), [cartItems]);
+  const cartTotal = useMemo(() => cartItems.reduce((sum, item) => sum + (item.promoPrice || item.price) * item.quantity, 0), [cartItems]);
   const cartCount = useMemo(() => cartItems.reduce((sum, item) => sum + item.quantity, 0), [cartItems]);
 
   return (
@@ -176,10 +131,7 @@ function AppContent() {
           </nav>
 
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setIsCartOpen(true)}
-              className="relative p-3 bg-brand-secondary text-brand-primary rounded-2xl hover:bg-brand-primary hover:text-brand-secondary transition-all group"
-            >
+            <button onClick={() => setIsCartOpen(true)} className="relative p-3 bg-brand-secondary text-brand-primary rounded-2xl hover:bg-brand-primary hover:text-brand-secondary transition-all group">
               <ShoppingBag size={24} />
               {cartCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-6 h-6 bg-brand-accent text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white group-hover:scale-110 transition-transform">
@@ -247,10 +199,13 @@ function AppContent() {
 
       <main>
         <Routes>
-          <Route path="/" element={<Home products={products} />} />
-          <Route path="/produtos" element={<Products products={products} onAddToCart={handleAddToCart} />} />
-          <Route path="/admin" element={user?.isAdmin ? <Admin /> : <Home products={products} />} />
-          <Route path="/perfil" element={user ? <Profile user={user} onReorder={handleReorder} /> : <Home products={products} />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/produtos" element={<Products onAddToCart={handleAddToCart} />} />
+          <Route path="/product/:id" element={<ProductDetail />} />
+          <Route path="/cart" element={<Cart cartItems={cartItems} onUpdateQuantity={handleUpdateQuantity} onRemoveFromCart={handleRemoveFromCart} onClearCart={handleClearCart} />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/admin" element={user?.isAdmin ? <Admin /> : <Home />} />
+          <Route path="/perfil" element={user ? <Profile user={user} onReorder={handleReorder} /> : <Home />} />
         </Routes>
       </main>
 
@@ -269,39 +224,59 @@ function AppContent() {
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            transition={{ type: 'spring', damping: 30, stiffness: 220 }}
             className="fixed right-0 top-0 h-full w-full md:max-w-md bg-white shadow-2xl z-[70] flex flex-col"
           >
-            <div className="p-6 md:p-8 border-b border-stone-100 flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Seu Carrinho</h2>
-              <button onClick={() => setIsCartOpen(false)}><X /></button>
+            <div className="p-6 flex items-center justify-between border-b">
+              <h2 className="text-2xl font-bold">Carrinho</h2>
+              <button onClick={() => setIsCartOpen(false)} className="p-2"><X size={24} /></button>
             </div>
-            <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-4">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {cartItems.length === 0 ? (
-                <p>Seu carrinho está vazio.</p>
+                <div className="text-center py-12">
+                  <p className="text-gray-500">Seu carrinho está vazio.</p>
+                </div>
               ) : (
                 cartItems.map((item) => (
-                  <div key={item.id} className="flex justify-between items-center">
-                    <div>
-                      <p className="font-bold">{item.name}</p>
-                      <p>R$ {item.price.toFixed(2)}</p>
+                  <div key={item.id} className="flex items-start gap-4">
+                    <img src={item.image} alt={item.name} className="w-20 h-20 object-cover rounded-lg" />
+                    <div className="flex-1">
+                      <p className="font-bold text-gray-800">{item.name}</p>
+                      <div className="flex justify-between items-center mt-2">
+                        <div className="flex items-center gap-2 border rounded-full px-2 py-1">
+                          <button onClick={() => handleUpdateQuantity(item.id, Math.max(1, item.quantity - 1))}><Minus size={14} /></button>
+                          <span className="font-bold text-sm w-4 text-center">{item.quantity}</span>
+                          <button onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}><Plus size={14} /></button>
+                        </div>
+                        <p className="font-bold text-gray-800">R$ {(item.promoPrice || item.price).toFixed(2)}</p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => handleUpdateQuantity(item.id, -1)}><Minus size={16} /></button>
-                      <span>{item.quantity}</span>
-                      <button onClick={() => handleUpdateQuantity(item.id, 1)}><Plus size={16} /></button>
-                      <button onClick={() => handleRemoveFromCart(item.id)}><X size={16} className="text-red-500" /></button>
-                    </div>
+                    <button onClick={() => handleRemoveFromCart(item.id)} className="text-gray-400 hover:text-red-500">
+                      <Trash2 size={20} />
+                    </button>
                   </div>
                 ))
               )}
             </div>
-            <div className="p-6 md:p-8 border-t border-stone-100 space-y-4">
-              <div className="flex justify-between font-bold">
-                <span>Total</span>
+            <div className="p-6 border-t space-y-4 bg-gray-50">
+              <div className="flex justify-between font-bold text-lg">
+                <span>Subtotal</span>
                 <span>R$ {cartTotal.toFixed(2)}</span>
               </div>
-              <button onClick={handleCheckout} className="w-full bg-brand-primary text-white py-3 rounded-lg font-bold">Finalizar Pedido</button>
+              <Link 
+                to="/cart"
+                onClick={() => setIsCartOpen(false)}
+                className="w-full block text-center bg-gray-200 text-gray-800 py-3 rounded-lg font-bold hover:bg-gray-300 transition-all"
+              >
+                Ver carrinho detalhado
+              </Link>
+              <Link 
+                to="/checkout" 
+                onClick={() => setIsCartOpen(false)} 
+                className="w-full block text-center bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition-all"
+              >
+                Ir para o pagamento
+              </Link>
             </div>
           </motion.div>
         )}
@@ -309,20 +284,8 @@ function AppContent() {
 
       <AuthModal 
         isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)} 
-        onLogin={(user) => {
-            setUser(user);
-            setIsAuthModalOpen(false);
-        }}
+        onClose={() => setIsAuthModalOpen(false)}
       />
     </div>
-  );
-}
-
-export default function App() {
-  return (
-    <Router>
-      <AppContent />
-    </Router>
   );
 }

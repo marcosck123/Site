@@ -1,19 +1,19 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Search, ShoppingBag, Star, Clock, Heart, X, Plus, Minus } from 'lucide-react';
-import { Product, Review } from '../types';
+import React, { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { Search, ShoppingBag, Star, Heart } from 'lucide-react';
+import { Product } from '../types';
+import { Link } from 'react-router-dom';
+import { useApp } from '../hooks/useApp';
 
 interface ProductsPageProps {
-  products: Product[];
   onAddToCart: (product: Product) => void;
 }
 
-export default function Products({ products, onAddToCart }: ProductsPageProps) {
+export default function Products({ onAddToCart }: ProductsPageProps) {
+  const { products } = useApp();
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   const [searchQuery, setSearchQuery] = useState('');
-  const [userFavorites, setUserFavorites] = useState<string[]>([]); // This will be updated from a user prop later
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [quantity, setQuantity] = useState(1);
+  const [userFavorites, setUserFavorites] = useState<string[]>([]);
 
   const categories = useMemo(() => 
     ['Todos', ...Array.from(new Set(products.map(p => p.category)))], 
@@ -28,20 +28,7 @@ export default function Products({ products, onAddToCart }: ProductsPageProps) {
   }, [selectedCategory, searchQuery, products]);
 
   const handleToggleFavorite = (productId: string) => {
-    // This will be handled by the main app state and Firebase
     console.log("Toggling favorite for", productId);
-  };
-
-  const openProductDetail = (product: Product) => {
-    setSelectedProduct(product);
-    setQuantity(1);
-  };
-
-  const handleAddToCartWithQuantity = (product: Product) => {
-    for (let i = 0; i < quantity; i++) {
-      onAddToCart(product);
-    }
-    setSelectedProduct(null);
   };
 
   return (
@@ -95,12 +82,14 @@ export default function Products({ products, onAddToCart }: ProductsPageProps) {
             className="bg-white rounded-[32px] overflow-hidden shadow-sm border border-stone-100 group hover:shadow-xl transition-all duration-300"
           >
             <div className="relative h-56">
-              <img 
-                src={product.image} 
-                alt={product.name} 
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                referrerPolicy="no-referrer"
-              />
+              <Link to={`/product/${product.id}`}>
+                <img 
+                  src={product.image} 
+                  alt={product.name} 
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  referrerPolicy="no-referrer"
+                />
+              </Link>
               <button 
                 onClick={() => handleToggleFavorite(product.id)}
                 className={`absolute top-4 right-4 p-2.5 bg-white/80 backdrop-blur-md rounded-full transition-colors ${userFavorites.includes(product.id) ? 'text-red-500' : 'text-stone-400 hover:text-brand-primary'}`}
@@ -113,63 +102,25 @@ export default function Products({ products, onAddToCart }: ProductsPageProps) {
               </div>
             </div>
             <div className="p-6">
-                <h3 
-                  onClick={() => openProductDetail(product)}
-                  className="font-bold text-stone-900 group-hover:text-brand-primary transition-colors cursor-pointer"
-                >
+              <Link to={`/product/${product.id}`}>
+                <h3 className="font-bold text-stone-900 group-hover:text-brand-primary transition-colors cursor-pointer">
                   {product.name}
                 </h3>
+              </Link>
               <p className="text-stone-500 text-xs mt-1 mb-4 line-clamp-2 leading-relaxed">{product.description}</p>
               <div className="flex items-center justify-between">
                   <span className="text-brand-primary font-black">R$ {product.price.toFixed(2)}</span>
                   <button
                     onClick={() => onAddToCart(product)}
-                    className="bg-brand-secondary text-brand-primary p-3 rounded-xl hover:bg-brand-primary hover:text-brand-secondary transition-all active:scale-95"
+                    className="bg-brand-secondary text-brand-primary px-4 py-2 rounded-xl hover:bg-brand-primary hover:text-brand-secondary transition-all active:scale-95 font-bold"
                   >
-                    <ShoppingBag size={20} />
+                    Adicionar
                   </button>
               </div>
             </div>
           </motion.div>
         ))}
       </div>
-
-      {/* Product Detail Modal */}
-      <AnimatePresence>
-        {selectedProduct && (
-          <>
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedProduct(null)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
-            />
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-[40px] shadow-2xl z-[110] p-8"
-            >
-              <h2 className="font-bold text-2xl mb-4">{selectedProduct.name}</h2>
-              <p className="text-stone-600 mb-6">{selectedProduct.description}</p>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-2 bg-stone-100 rounded-full"><Minus size={18}/></button>
-                  <span className="font-bold text-lg">{quantity}</span>
-                  <button onClick={() => setQuantity(quantity + 1)} className="p-2 bg-stone-100 rounded-full"><Plus size={18}/></button>
-                </div>
-                <button 
-                  onClick={() => handleAddToCartWithQuantity(selectedProduct)}
-                  className="bg-brand-primary text-white font-bold py-3 px-6 rounded-xl"
-                >
-                  Adicionar (R$ {(selectedProduct.price * quantity).toFixed(2)})
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

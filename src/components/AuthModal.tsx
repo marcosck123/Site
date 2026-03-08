@@ -4,14 +4,15 @@ import { X, Mail, Lock, User, ArrowRight, Phone, MapPin, AlertCircle } from 'luc
 import { User as UserType } from '../types';
 import { FirebaseService } from '../services/firebaseService';
 import LoadingModal from './LoadingModal';
+import { useAuth } from '../hooks/useAuth';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLogin: (user: UserType) => void;
 }
 
-export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) {
+export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
+  const { setUser } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -73,7 +74,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
       if (isLogin) {
         const user = await FirebaseService.login(email, password);
         if (user) {
-          onLogin(user);
+          setUser(user);
           onClose();
         } else {
           setError('Credenciais inválidas. Por favor, tente novamente.');
@@ -86,13 +87,18 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
           address,
           avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`
         }, password);
-        onLogin(newUser);
+        setUser(newUser);
         onClose();
       }
     } catch (err: any) {
       const errorCode = err?.code || err?.message || 'unknown';
       console.error('Authentication error:', errorCode);
-      setError('Ocorreu um erro. Por favor, tente novamente.');
+      if (errorCode === 'auth/email-already-in-use') {
+        setError('Este e-mail já está em uso. Tente fazer login.');
+        setIsLogin(true);
+      } else {
+        setError('Ocorreu um erro. Por favor, tente novamente.');
+      }
     } finally {
         setIsLoading(false);
         setLoadingMessage('');

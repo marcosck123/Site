@@ -1,14 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { motion } from 'motion/react';
+import React, { useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { ArrowRight, Star, ShoppingBag, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Product } from '../types';
+import { useApp } from '../hooks/useApp';
 
-interface HomeProps {
-  products: Product[];
-}
+export default function Home() {
+  const { products } = useApp();
 
-export default function Home({ products }: HomeProps) {
   const featuredProducts = useMemo(() => 
     [...products].sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 4),
   [products]);
@@ -74,7 +72,7 @@ export default function Home({ products }: HomeProps) {
                 <h3 className="font-bold text-stone-900 mb-1">{product.name}</h3>
                 <p className="text-brand-primary font-black mb-4">R$ {product.price.toFixed(2)}</p>
                 <Link 
-                  to={`/produtos`}
+                  to={`/product/${product.id}`}
                   className="w-full bg-stone-50 text-stone-800 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-brand-primary hover:text-brand-secondary transition-all"
                 >
                   <ShoppingBag size={18} />

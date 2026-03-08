@@ -89,8 +89,14 @@ export interface Product {
   tags?: string[]; // New: ['Sem Açúcar', 'Vegano', etc]
 }
 
-export interface CartItem extends Product {
+export interface CartItem {
+  id: string; // Product ID
+  name: string;
+  price: number;
+  promoPrice?: number;
+  image: string;
   quantity: number;
+  category: string;
 }
 
 export type OrderStatus = 'Pendente' | 'Aceito' | 'Recusado' | 'Em Trânsito' | 'Entregue';
