@@ -76,10 +76,24 @@ const Cart: React.FC<CartProps> = ({ cartItems, onUpdateQuantity, onRemoveFromCa
           </div>
 
           <div className="mt-8 pt-6 border-t">
-            <div className="flex justify-end items-center mb-4">
-              <span className="text-lg font-medium text-gray-600">Subtotal:</span>
-              <span className="text-2xl font-bold text-gray-900 ml-4">R$ {cartTotal.toFixed(2)}</span>
-            </div>
+
+  {/* Subtotal */}
+  <div className="flex justify-end items-center mb-4">
+    <span className="text-lg font-medium text-gray-600">Subtotal:</span>
+    <span className="text-2xl font-bold text-gray-900 ml-4">R$ {cartTotal.toFixed(2)}</span>
+  </div>
+
+  {/* Frete (novo) */}
+  <div className="flex justify-end items-center mb-4">
+    <span className="text-lg font-medium text-gray-600">Frete:</span>
+    <span className="text-2xl font-bold text-gray-900 ml-4">R$ {frete.toFixed(2)}</span>
+  </div>
+
+  {/* Total (subtotal + frete) */}
+  <div className="flex justify-end items-center font-bold text-xl border-t pt-4">
+    <span>Total:</span>
+    <span className="text-3xl font-bold ml-4">R$ {total.toFixed(2)}</span>
+  </div>
             <p className="text-right text-sm text-gray-500 mb-6">Cupons, formas de pagamento, etc. serão exibidos na próxima página.</p>
             <Link to="/checkout" className="w-full flex items-center justify-center bg-red-600 text-white py-4 rounded-lg font-bold text-lg hover:bg-red-700 transition-all">
               Ir para o pagamento
